@@ -1,0 +1,16 @@
+bin/
+dist/
+*.exe
+*.test
+*.out
+coverage.*
+
+.env
+.env.local
+
+.idea/
+.vscode/
+.DS_Store
+
+/mini-claude
+/tui
