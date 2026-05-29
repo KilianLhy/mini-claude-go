@@ -99,9 +99,16 @@ var (
 	welcomeLogoStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("209")).
 				Bold(true)
+	welcomeLabelStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("244"))
+	welcomeValueStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("231"))
 	welcomeTipStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("250")).
 			Italic(true)
+	welcomeSectionStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("209")).
+				Bold(true)
 	welcomeAccentStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("213"))
 )
@@ -315,6 +322,20 @@ func (m Model) welcomeView() string {
 
 	tagline := welcomeTipStyle.Render("A fast, private TUI chat for self-hosted LLMs.\nNothing leaves your machine.")
 
+	builtBy := lipgloss.JoinVertical(lipgloss.Left,
+		welcomeSectionStyle.Render("Built by"),
+		welcomeValueStyle.Render("Hugo Stawiarski  ·  Kilian Lahaye  ·  Moustapha Sow"),
+	)
+
+	labelW := lipgloss.NewStyle().Width(9)
+	infoLine := func(label, value string) string {
+		return labelW.Render(welcomeLabelStyle.Render(label)) + welcomeValueStyle.Render(value)
+	}
+	info := lipgloss.JoinVertical(lipgloss.Left,
+		infoLine("model", m.cfg.Model),
+		infoLine("server", m.cfg.BaseURL),
+	)
+
 	keys := subtleStyle.Render("enter send  ·  ctrl+j newline  ·  esc/ctrl+c quit")
 
 	return lipgloss.JoinVertical(lipgloss.Left,
@@ -323,6 +344,10 @@ func (m Model) welcomeView() string {
 		logo,
 		"",
 		tagline,
+		"",
+		builtBy,
+		"",
+		info,
 		"",
 		keys,
 	)
