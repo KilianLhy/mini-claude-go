@@ -501,9 +501,14 @@ func (m Model) welcomeView() string {
 	infoLine := func(label, value string) string {
 		return labelW.Render(welcomeLabelStyle.Render(label)) + welcomeValueStyle.Render(value)
 	}
+	hyperlink := func(label, url, display string) string {
+		linked := "\x1b]8;;" + url + "\x1b\\" + welcomeValueStyle.Render(display) + "\x1b]8;;\x1b\\"
+		return labelW.Render(welcomeLabelStyle.Render(label)) + linked
+	}
 	info := lipgloss.JoinVertical(lipgloss.Left,
 		infoLine("model", m.cfg.Model),
 		infoLine("server", m.cfg.BaseURL),
+		hyperlink("site", "https://miniclaude.fr", "miniclaude.fr"),
 	)
 
 	cmdW := lipgloss.NewStyle().Width(11)

@@ -23,7 +23,7 @@ func main() {
 	defer cancel()
 
 	model := ui.New(cfg, cli, ctx)
-	prog := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
+	prog := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := prog.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "fatal:", err)
