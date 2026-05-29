@@ -27,7 +27,7 @@ type Model struct {
 	spinner  spinner.Model
 
 	streaming bool
-	current   strings.Builder
+	current   string
 	tokens    <-chan string
 	errs      <-chan error
 	lastErr   error
@@ -118,7 +118,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.textarea.Reset()
 			m.history.Add(chat.RoleUser, input)
-			m.current.Reset()
+			m.current = ""
 			m.streaming = true
 			m.lastErr = nil
 			m.tokens, m.errs = m.client.Stream(m.ctx, m.history.Messages())
@@ -130,17 +130,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tokenMsg:
-		m.current.WriteString(msg.content)
+		m.current += msg.content
 		m.refresh()
 		return m, nextEvent(m.tokens, m.errs)
 
 	case streamDoneMsg:
 		if msg.err != nil {
 			m.lastErr = msg.err
-		} else if m.current.Len() > 0 {
-			m.history.Add(chat.RoleAssistant, m.current.String())
+		} else if m.current != "" {
+			m.history.Add(chat.RoleAssistant, m.current)
 		}
-		m.current.Reset()
+		m.current = ""
 		m.streaming = false
 		m.tokens = nil
 		m.errs = nil
@@ -242,12 +242,12 @@ func (m *Model) renderHistory() string {
 		}
 		sb.WriteString(msg.Content + "\n")
 	}
-	if m.streaming && m.current.Len() > 0 {
+	if m.streaming && m.current != "" {
 		if !first {
 			sb.WriteString("\n")
 		}
 		sb.WriteString(assistantStyle.Render("mini-claude") + "\n")
-		sb.WriteString(m.current.String() + "\n")
+		sb.WriteString(m.current + "\n")
 	}
 	if sb.Len() == 0 {
 		return subtleStyle.Render("ask anything — your messages stay on this machine.")
