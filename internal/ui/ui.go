@@ -506,6 +506,17 @@ func (m Model) welcomeView() string {
 		infoLine("server", m.cfg.BaseURL),
 	)
 
+	cmdW := lipgloss.NewStyle().Width(11)
+	cmdLine := func(name, desc string) string {
+		return cmdW.Render(welcomeAccentStyle.Bold(true).Render(name)) + welcomeLabelStyle.Render(desc)
+	}
+	commands := lipgloss.JoinVertical(lipgloss.Left,
+		welcomeSectionStyle.Render("Commands"),
+		cmdLine("/model", "pick or switch the model"),
+		cmdLine("/clear", "start a fresh conversation"),
+		cmdLine("/quit", "exit mini-claude"),
+	)
+
 	keys := subtleStyle.Render("enter send  ·  ctrl+j newline  ·  esc/ctrl+c quit")
 
 	return lipgloss.JoinVertical(lipgloss.Left,
@@ -518,6 +529,8 @@ func (m Model) welcomeView() string {
 		builtBy,
 		"",
 		info,
+		"",
+		commands,
 		"",
 		keys,
 	)
