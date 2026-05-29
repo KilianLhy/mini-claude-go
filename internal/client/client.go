@@ -29,6 +29,47 @@ func New(baseURL, model string, temperature float64) *Client {
 	}
 }
 
+func (c *Client) Model() string {
+	return c.model
+}
+
+func (c *Client) SetModel(model string) {
+	c.model = model
+}
+
+type modelsResponse struct {
+	Data []struct {
+		ID string `json:"id"`
+	} `json:"data"`
+}
+
+func (c *Client) ListModels(ctx context.Context) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/v1/models", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return nil, fmt.Errorf("upstream %d: %s", resp.StatusCode, strings.TrimSpace(string(msg)))
+	}
+
+	var r modelsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(r.Data))
+	for _, m := range r.Data {
+		out = append(out, m.ID)
+	}
+	return out, nil
+}
+
 type chatRequest struct {
 	Model       string         `json:"model"`
 	Messages    []chat.Message `json:"messages"`
