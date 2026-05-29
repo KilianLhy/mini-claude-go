@@ -86,6 +86,42 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("240")).
 			Padding(0, 1)
+	welcomeChipStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("209")).
+				Padding(0, 2)
+	welcomeStarStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("209")).
+				Bold(true)
+	welcomeTitleStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("231")).
+				Bold(true)
+	welcomeLogoStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("209")).
+				Bold(true)
+	welcomeTipStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("250")).
+			Italic(true)
+	welcomeAccentStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("213"))
+)
+
+const (
+	logoMini = `███╗   ███╗██╗███╗   ██╗██╗
+████╗ ████║██║████╗  ██║██║
+██╔████╔██║██║██╔██╗ ██║██║
+██║╚██╔╝██║██║██║╚██╗██║██║
+██║ ╚═╝ ██║██║██║ ╚████║██║
+╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝`
+
+	logoClaude = ` ██████╗██╗      █████╗ ██╗   ██╗██████╗ ███████╗
+██╔════╝██║     ██╔══██╗██║   ██║██╔══██╗██╔════╝
+██║     ██║     ███████║██║   ██║██║  ██║█████╗
+██║     ██║     ██╔══██║██║   ██║██║  ██║██╔══╝
+╚██████╗███████╗██║  ██║╚██████╔╝██████╔╝███████╗
+ ╚═════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝`
+
+	logoMinWidth = 49
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -250,9 +286,46 @@ func (m *Model) renderHistory() string {
 		sb.WriteString(m.current + "\n")
 	}
 	if sb.Len() == 0 {
-		return subtleStyle.Render("ask anything — your messages stay on this machine.")
+		return m.welcomeView()
 	}
 	return sb.String()
+}
+
+func (m Model) welcomeView() string {
+	w := m.viewport.Width
+	if w <= 0 {
+		w = m.width
+	}
+
+	chip := welcomeChipStyle.Render(
+		welcomeStarStyle.Render("✻ ") +
+			welcomeTitleStyle.Render("Welcome to ") +
+			welcomeAccentStyle.Bold(true).Render("mini-claude"),
+	)
+
+	var logo string
+	if w >= logoMinWidth+2 {
+		logo = lipgloss.JoinVertical(lipgloss.Left,
+			welcomeLogoStyle.Render(logoMini),
+			welcomeLogoStyle.Render(logoClaude),
+		)
+	} else {
+		logo = welcomeLogoStyle.Render("mini-claude")
+	}
+
+	tagline := welcomeTipStyle.Render("A fast, private TUI chat for self-hosted LLMs.\nNothing leaves your machine.")
+
+	keys := subtleStyle.Render("enter send  ·  ctrl+j newline  ·  esc/ctrl+c quit")
+
+	return lipgloss.JoinVertical(lipgloss.Left,
+		chip,
+		"",
+		logo,
+		"",
+		tagline,
+		"",
+		keys,
+	)
 }
 
 func nextEvent(tokens <-chan string, errs <-chan error) tea.Cmd {
