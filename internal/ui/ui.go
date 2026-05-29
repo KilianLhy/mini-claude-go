@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -25,10 +26,19 @@ type Model struct {
 	textarea textarea.Model
 	spinner  spinner.Model
 
+	streaming bool
+	current   strings.Builder
+	tokens    <-chan string
+	errs      <-chan error
+	lastErr   error
+
 	width  int
 	height int
 	ready  bool
 }
+
+type tokenMsg struct{ content string }
+type streamDoneMsg struct{ err error }
 
 func New(cfg config.Config, cli *client.Client, ctx context.Context) Model {
 	ta := textarea.New()
@@ -64,6 +74,14 @@ var (
 			Bold(true)
 	subtleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241"))
+	userStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("213")).
+			Bold(true)
+	assistantStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("82")).
+			Bold(true)
+	errorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("196"))
 	viewportStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("240")).
@@ -78,15 +96,62 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.resize()
+		m.refresh()
 		m.ready = true
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "esc":
+		case "ctrl+c":
 			return m, tea.Quit
+		case "esc":
+			if m.streaming {
+				return m, nil
+			}
+			return m, tea.Quit
+		case "enter":
+			if m.streaming {
+				return m, nil
+			}
+			input := strings.TrimSpace(m.textarea.Value())
+			if input == "" {
+				return m, nil
+			}
+			m.textarea.Reset()
+			m.history.Add(chat.RoleUser, input)
+			m.current.Reset()
+			m.streaming = true
+			m.lastErr = nil
+			m.tokens, m.errs = m.client.Stream(m.ctx, m.history.Messages())
+			m.refresh()
+			return m, tea.Batch(nextEvent(m.tokens, m.errs), m.spinner.Tick)
 		case "ctrl+j":
 			m.textarea.InsertString("\n")
 			return m, nil
+		}
+
+	case tokenMsg:
+		m.current.WriteString(msg.content)
+		m.refresh()
+		return m, nextEvent(m.tokens, m.errs)
+
+	case streamDoneMsg:
+		if msg.err != nil {
+			m.lastErr = msg.err
+		} else if m.current.Len() > 0 {
+			m.history.Add(chat.RoleAssistant, m.current.String())
+		}
+		m.current.Reset()
+		m.streaming = false
+		m.tokens = nil
+		m.errs = nil
+		m.refresh()
+		return m, nil
+
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		if m.streaming {
+			cmds = append(cmds, cmd)
 		}
 	}
 
@@ -104,7 +169,8 @@ func (m Model) View() string {
 
 	header := headerStyle.Render("mini-claude") +
 		subtleStyle.Render(fmt.Sprintf("  model: %s  ·  %s", m.cfg.Model, m.cfg.BaseURL))
-	status := subtleStyle.Render("ctrl+j newline · esc/ctrl+c quit")
+
+	status := m.statusLine()
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		header,
@@ -112,6 +178,17 @@ func (m Model) View() string {
 		m.textarea.View(),
 		status,
 	)
+}
+
+func (m Model) statusLine() string {
+	hint := subtleStyle.Render("enter: send · ctrl+j: newline · esc/ctrl+c: quit")
+	if m.lastErr != nil {
+		return errorStyle.Render("error: "+m.lastErr.Error()) + "  " + hint
+	}
+	if m.streaming {
+		return m.spinner.View() + " " + subtleStyle.Render("generating…") + "  " + hint
+	}
+	return hint
 }
 
 func (m *Model) resize() {
@@ -138,4 +215,53 @@ func (m *Model) resize() {
 		m.viewport.Height = viewportH
 	}
 	m.textarea.SetWidth(w)
+}
+
+func (m *Model) refresh() {
+	m.viewport.SetContent(m.renderHistory())
+	m.viewport.GotoBottom()
+}
+
+func (m *Model) renderHistory() string {
+	var sb strings.Builder
+	msgs := m.history.Messages()
+	first := true
+	for _, msg := range msgs {
+		if msg.Role == chat.RoleSystem {
+			continue
+		}
+		if !first {
+			sb.WriteString("\n")
+		}
+		first = false
+		switch msg.Role {
+		case chat.RoleUser:
+			sb.WriteString(userStyle.Render("you") + "\n")
+		case chat.RoleAssistant:
+			sb.WriteString(assistantStyle.Render("mini-claude") + "\n")
+		}
+		sb.WriteString(msg.Content + "\n")
+	}
+	if m.streaming && m.current.Len() > 0 {
+		if !first {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(assistantStyle.Render("mini-claude") + "\n")
+		sb.WriteString(m.current.String() + "\n")
+	}
+	if sb.Len() == 0 {
+		return subtleStyle.Render("ask anything — your messages stay on this machine.")
+	}
+	return sb.String()
+}
+
+func nextEvent(tokens <-chan string, errs <-chan error) tea.Cmd {
+	return func() tea.Msg {
+		tok, ok := <-tokens
+		if !ok {
+			err := <-errs
+			return streamDoneMsg{err: err}
+		}
+		return tokenMsg{content: tok}
+	}
 }
