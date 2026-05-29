@@ -291,7 +291,7 @@ func (m Model) statusLine() string {
 	case modeModelPicker:
 		return subtleStyle.Render("↑/↓ navigate  ·  enter select  ·  esc cancel")
 	}
-	hint := subtleStyle.Render("enter send · ctrl+j newline · /model · esc/ctrl+c quit")
+	hint := subtleStyle.Render("enter send · ctrl+j newline · /model · /clear · esc/ctrl+c quit")
 	if m.lastErr != nil {
 		return errorStyle.Render("error: "+m.lastErr.Error()) + "  " + hint
 	}
@@ -385,8 +385,16 @@ func (m Model) handleCommand(input string) (tea.Model, tea.Cmd) {
 		m.notice = ""
 		m.refresh()
 		return m, tea.Batch(fetchModelsCmd(m.client, m.ctx), m.spinner.Tick)
+	case "/clear":
+		m.history = chat.New(m.cfg.SystemPrompt)
+		m.lastErr = nil
+		m.notice = "conversation cleared"
+		m.refresh()
+		return m, nil
+	case "/quit", "/exit":
+		return m, tea.Quit
 	}
-	m.lastErr = fmt.Errorf("unknown command: %s", cmd)
+	m.lastErr = fmt.Errorf("unknown command: %s (try /model, /clear, /quit)", cmd)
 	return m, nil
 }
 
