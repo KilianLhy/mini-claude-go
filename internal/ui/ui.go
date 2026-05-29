@@ -16,6 +16,14 @@ import (
 	"gitlab.com/marseille-bb/mini-claude/internal/config"
 )
 
+type mode int
+
+const (
+	modeChat mode = iota
+	modeModelLoading
+	modeModelPicker
+)
+
 type Model struct {
 	cfg     config.Config
 	client  *client.Client
@@ -31,6 +39,11 @@ type Model struct {
 	tokens    <-chan string
 	errs      <-chan error
 	lastErr   error
+	notice    string
+
+	mode        mode
+	models      []string
+	modelCursor int
 
 	width  int
 	height int
@@ -39,6 +52,10 @@ type Model struct {
 
 type tokenMsg struct{ content string }
 type streamDoneMsg struct{ err error }
+type modelsMsg struct {
+	models []string
+	err    error
+}
 
 func New(cfg config.Config, cli *client.Client, ctx context.Context) Model {
 	ta := textarea.New()
@@ -111,6 +128,16 @@ var (
 				Bold(true)
 	welcomeAccentStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("213"))
+	pickerArrowStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("209")).
+				Bold(true)
+	pickerSelectedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("231")).
+				Bold(true)
+	pickerItemStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("250"))
+	noticeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("82"))
 )
 
 const (
@@ -143,6 +170,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ready = true
 
 	case tea.KeyMsg:
+		if m.mode == modeModelPicker {
+			return m.updatePicker(msg)
+		}
+		if m.mode == modeModelLoading {
+			if s := msg.String(); s == "esc" || s == "ctrl+c" {
+				m.mode = modeChat
+				m.refresh()
+				return m, nil
+			}
+			return m, nil
+		}
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
@@ -160,10 +198,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			m.textarea.Reset()
+			if strings.HasPrefix(input, "/") {
+				return m.handleCommand(input)
+			}
 			m.history.Add(chat.RoleUser, input)
 			m.current = ""
 			m.streaming = true
 			m.lastErr = nil
+			m.notice = ""
 			m.tokens, m.errs = m.client.Stream(m.ctx, m.history.Messages())
 			m.refresh()
 			return m, tea.Batch(nextEvent(m.tokens, m.errs), m.spinner.Tick)
@@ -187,6 +229,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.streaming = false
 		m.tokens = nil
 		m.errs = nil
+		m.refresh()
+		return m, nil
+
+	case modelsMsg:
+		if msg.err != nil {
+			m.lastErr = msg.err
+			m.mode = modeChat
+			m.refresh()
+			return m, nil
+		}
+		m.models = msg.models
+		m.modelCursor = 0
+		for i, name := range m.models {
+			if name == m.cfg.Model {
+				m.modelCursor = i
+				break
+			}
+		}
+		m.mode = modeModelPicker
 		m.refresh()
 		return m, nil
 
@@ -224,9 +285,18 @@ func (m Model) View() string {
 }
 
 func (m Model) statusLine() string {
-	hint := subtleStyle.Render("enter: send · ctrl+j: newline · esc/ctrl+c: quit")
+	switch m.mode {
+	case modeModelLoading:
+		return m.spinner.View() + " " + subtleStyle.Render("loading models…  esc to cancel")
+	case modeModelPicker:
+		return subtleStyle.Render("↑/↓ navigate  ·  enter select  ·  esc cancel")
+	}
+	hint := subtleStyle.Render("enter send · ctrl+j newline · /model · esc/ctrl+c quit")
 	if m.lastErr != nil {
 		return errorStyle.Render("error: "+m.lastErr.Error()) + "  " + hint
+	}
+	if m.notice != "" {
+		return noticeStyle.Render(m.notice) + "  " + hint
 	}
 	if m.streaming {
 		return m.spinner.View() + " " + subtleStyle.Render("generating…") + "  " + hint
@@ -261,8 +331,100 @@ func (m *Model) resize() {
 }
 
 func (m *Model) refresh() {
-	m.viewport.SetContent(m.renderHistory())
+	switch m.mode {
+	case modeModelLoading:
+		m.viewport.SetContent(subtleStyle.Render("fetching models from ") + welcomeValueStyle.Render(m.cfg.BaseURL) + subtleStyle.Render("…"))
+	case modeModelPicker:
+		m.viewport.SetContent(m.renderPicker())
+	default:
+		m.viewport.SetContent(m.renderHistory())
+	}
 	m.viewport.GotoBottom()
+}
+
+func (m Model) renderPicker() string {
+	var sb strings.Builder
+	sb.WriteString(welcomeSectionStyle.Render("Choose a model") + "\n\n")
+	if len(m.models) == 0 {
+		sb.WriteString(subtleStyle.Render("No models found. Pull one with:") + "\n")
+		sb.WriteString(welcomeValueStyle.Render("  ollama pull llama3.2:3b") + "\n")
+		return sb.String()
+	}
+	for i, name := range m.models {
+		prefix := "   "
+		line := pickerItemStyle.Render(name)
+		if i == m.modelCursor {
+			prefix = " " + pickerArrowStyle.Render("›") + " "
+			line = pickerSelectedStyle.Render(name)
+		}
+		marker := ""
+		if name == m.cfg.Model {
+			marker = subtleStyle.Render("  (current)")
+		}
+		sb.WriteString(prefix + line + marker + "\n")
+	}
+	return sb.String()
+}
+
+func (m Model) handleCommand(input string) (tea.Model, tea.Cmd) {
+	parts := strings.Fields(input)
+	cmd := parts[0]
+	switch cmd {
+	case "/model":
+		if len(parts) > 1 {
+			name := parts[1]
+			m.client.SetModel(name)
+			m.cfg.Model = name
+			m.notice = "switched to " + name
+			m.lastErr = nil
+			m.refresh()
+			return m, nil
+		}
+		m.mode = modeModelLoading
+		m.lastErr = nil
+		m.notice = ""
+		m.refresh()
+		return m, tea.Batch(fetchModelsCmd(m.client, m.ctx), m.spinner.Tick)
+	}
+	m.lastErr = fmt.Errorf("unknown command: %s", cmd)
+	return m, nil
+}
+
+func (m Model) updatePicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "up", "k":
+		if m.modelCursor > 0 {
+			m.modelCursor--
+			m.refresh()
+		}
+	case "down", "j":
+		if m.modelCursor < len(m.models)-1 {
+			m.modelCursor++
+			m.refresh()
+		}
+	case "enter":
+		if len(m.models) > 0 {
+			name := m.models[m.modelCursor]
+			m.client.SetModel(name)
+			m.cfg.Model = name
+			m.notice = "switched to " + name
+		}
+		m.mode = modeChat
+		m.refresh()
+	case "esc":
+		m.mode = modeChat
+		m.refresh()
+	case "ctrl+c":
+		return m, tea.Quit
+	}
+	return m, nil
+}
+
+func fetchModelsCmd(cli *client.Client, ctx context.Context) tea.Cmd {
+	return func() tea.Msg {
+		models, err := cli.ListModels(ctx)
+		return modelsMsg{models: models, err: err}
+	}
 }
 
 func (m *Model) renderHistory() string {
