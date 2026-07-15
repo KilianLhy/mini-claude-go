@@ -1,10 +1,10 @@
 # GoReleaser configuration — cross-compiles the CLI, publishes GitHub releases,
-# and updates the Homebrew tap and Scoop bucket.
+# and updates the Homebrew tap.
 #
 # Release target: github.com/KilianLhy/mini-claude-go
-# Still to create on GitHub (under KilianLhy) before the first release:
-#   - homebrew-tap    (Homebrew cask, filled automatically by GoReleaser)
-#   - scoop-bucket    (Scoop manifest, filled automatically by GoReleaser)
+# Must exist on GitHub before the first release (initialize it with a README so
+# it has a default branch):
+#   - KilianLhy/homebrew-tap    (Homebrew cask, filled automatically by GoReleaser)
 # Release runs from GitLab CI on a version tag, or locally with
 # `goreleaser release --clean` and GITHUB_TOKEN set.
 version: 2
@@ -65,15 +65,6 @@ homebrew_casks:
     repository:
       owner: KilianLhy
       name: homebrew-tap
-    homepage: "https://miniclaude.fr"
-    description: "A fast, private TUI chat client for self-hosted LLMs."
-    license: "MIT"
-
-scoops:
-  - name: mini-claude
-    repository:
-      owner: KilianLhy
-      name: scoop-bucket
     homepage: "https://miniclaude.fr"
     description: "A fast, private TUI chat client for self-hosted LLMs."
     license: "MIT"
