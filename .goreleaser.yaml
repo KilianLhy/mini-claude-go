@@ -1,0 +1,79 @@
+# GoReleaser configuration — cross-compiles the CLI, publishes GitHub releases,
+# and updates the Homebrew tap and Scoop bucket.
+#
+# Release target: github.com/KilianLhy/mini-claude-go
+# Still to create on GitHub (under KilianLhy) before the first release:
+#   - homebrew-tap    (Homebrew cask, filled automatically by GoReleaser)
+#   - scoop-bucket    (Scoop manifest, filled automatically by GoReleaser)
+# Release runs from GitLab CI on a version tag, or locally with
+# `goreleaser release --clean` and GITHUB_TOKEN set.
+version: 2
+
+project_name: mini-claude
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: mini-claude
+    main: ./cmd/tui
+    binary: mini-claude
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    # Windows users expect a .zip.
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  github:
+    owner: KilianLhy
+    name: mini-claude-go
+
+homebrew_casks:
+  - name: mini-claude
+    repository:
+      owner: KilianLhy
+      name: homebrew-tap
+    homepage: "https://miniclaude.fr"
+    description: "A fast, private TUI chat client for self-hosted LLMs."
+    license: "MIT"
+
+scoops:
+  - name: mini-claude
+    repository:
+      owner: KilianLhy
+      name: scoop-bucket
+    homepage: "https://miniclaude.fr"
+    description: "A fast, private TUI chat client for self-hosted LLMs."
+    license: "MIT"

@@ -1,0 +1,34 @@
+# GitLab CI/CD — checks every branch/MR, and cuts a release on version tags.
+#
+# The `release` job runs GoReleaser, which publishes to GitHub (releases +
+# Homebrew tap + Scoop bucket). It needs a CI/CD variable named GITHUB_TOKEN
+# (Settings > CI/CD > Variables, masked + protected) with a GitHub PAT that can
+# write to the release, homebrew-tap and scoop-bucket repos.
+
+stages:
+  - check
+  - release
+
+variables:
+  GOTOOLCHAIN: auto
+
+check:
+  stage: check
+  image: golang:1.24
+  script:
+    - go build ./...
+    - go vet ./...
+    - go test ./...
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+
+release:
+  stage: release
+  image: goreleaser/goreleaser:latest
+  variables:
+    GIT_DEPTH: 0 # GoReleaser needs full history + tags
+  script:
+    - goreleaser release --clean
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'

@@ -14,8 +14,24 @@ import (
 	"gitlab.com/marseille-bb/mini-claude/internal/ui"
 )
 
+// version is injected at build time by GoReleaser via -ldflags; it stays
+// "dev" for local `go run`/`go build`.
+var version = "dev"
+
 func main() {
-	cfg := config.Load()
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--version", "-v", "version":
+			fmt.Println("mini-claude", version)
+			return
+		}
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		// Non-fatal: a corrupt config file falls back to defaults.
+		fmt.Fprintln(os.Stderr, "config:", err)
+	}
 	cli := client.New(cfg.BaseURL, cfg.Model, cfg.Temperature)
 
 	ctx, cancel := signal.NotifyContext(context.Background(),

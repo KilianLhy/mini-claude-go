@@ -14,6 +14,8 @@ import (
 	"gitlab.com/marseille-bb/mini-claude/internal/chat"
 	"gitlab.com/marseille-bb/mini-claude/internal/client"
 	"gitlab.com/marseille-bb/mini-claude/internal/config"
+	"gitlab.com/marseille-bb/mini-claude/internal/shared"
+	"gitlab.com/marseille-bb/mini-claude/internal/store"
 )
 
 type mode int
@@ -22,6 +24,7 @@ const (
 	modeChat mode = iota
 	modeModelLoading
 	modeModelPicker
+	modeSettings
 )
 
 type Model struct {
@@ -45,6 +48,9 @@ type Model struct {
 	models      []string
 	modelCursor int
 
+	themeCursor   int
+	themeOriginal string // theme to restore if the settings screen is cancelled
+
 	width  int
 	height int
 	ready  bool
@@ -67,17 +73,44 @@ func New(cfg config.Config, cli *client.Client, ctx context.Context) Model {
 	ta.Focus()
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
+	theme := themeByName(cfg.Theme)
+	applyTheme(theme)
+
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
-	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("213"))
+	sp.Style = lipgloss.NewStyle().Foreground(theme.Primary)
+
+	// Restore any persisted conversation. A load error is non-fatal: we start
+	// with an empty history and tell the user.
+	var notice string
+	st, err := store.LoadState()
+	if err != nil {
+		notice = "could not load saved history (starting fresh)"
+	}
 
 	return Model{
 		cfg:      cfg,
 		client:   cli,
-		history:  chat.New(cfg.SystemPrompt),
+		history:  chat.Load(cfg.SystemPrompt, st.Messages),
 		ctx:      ctx,
 		textarea: ta,
 		spinner:  sp,
+		notice:   notice,
+	}
+}
+
+// persistState saves the current conversation to disk. Failures are surfaced
+// as a notice but never interrupt the chat (offline/local-first).
+func (m *Model) persistState() {
+	if err := store.SaveState(shared.State{Messages: m.history.Conversation()}); err != nil {
+		m.notice = "could not save history"
+	}
+}
+
+// persistConfig saves the current settings. Non-fatal on failure.
+func (m *Model) persistConfig() {
+	if err := config.Save(m.cfg); err != nil {
+		m.notice = "could not save settings"
 	}
 }
 
@@ -85,60 +118,7 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(textarea.Blink, m.spinner.Tick)
 }
 
-var (
-	headerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("213")).
-			Bold(true)
-	subtleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241"))
-	userStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("213")).
-			Bold(true)
-	assistantStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("82")).
-			Bold(true)
-	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196"))
-	viewportStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("240")).
-			Padding(0, 1)
-	welcomeChipStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("209")).
-				Padding(0, 2)
-	welcomeStarStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("209")).
-				Bold(true)
-	welcomeTitleStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("231")).
-				Bold(true)
-	welcomeLogoStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("209")).
-				Bold(true)
-	welcomeLabelStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("244"))
-	welcomeValueStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("231"))
-	welcomeTipStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("250")).
-			Italic(true)
-	welcomeSectionStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("209")).
-				Bold(true)
-	welcomeAccentStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("213"))
-	pickerArrowStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("209")).
-				Bold(true)
-	pickerSelectedStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("231")).
-				Bold(true)
-	pickerItemStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("250"))
-	noticeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("82"))
-)
+// UI styles live in theme.go and are (re)built by applyTheme.
 
 const (
 	logoMini = `███╗   ███╗██╗███╗   ██╗██╗
@@ -170,6 +150,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ready = true
 
 	case tea.KeyMsg:
+		if m.mode == modeSettings {
+			return m.updateSettings(msg)
+		}
 		if m.mode == modeModelPicker {
 			return m.updatePicker(msg)
 		}
@@ -224,6 +207,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.lastErr = msg.err
 		} else if m.current != "" {
 			m.history.Add(chat.RoleAssistant, m.current)
+			m.persistState()
 		}
 		m.current = ""
 		m.streaming = false
@@ -290,6 +274,8 @@ func (m Model) statusLine() string {
 		return m.spinner.View() + " " + subtleStyle.Render("loading models…  esc to cancel")
 	case modeModelPicker:
 		return subtleStyle.Render("↑/↓ navigate  ·  enter select  ·  esc cancel")
+	case modeSettings:
+		return subtleStyle.Render("↑/↓ preview theme  ·  enter keep  ·  esc cancel")
 	}
 	hint := subtleStyle.Render("enter send · ctrl+j newline · /model · /clear · esc/ctrl+c quit")
 	if m.lastErr != nil {
@@ -336,6 +322,8 @@ func (m *Model) refresh() {
 		m.viewport.SetContent(subtleStyle.Render("fetching models from ") + welcomeValueStyle.Render(m.cfg.BaseURL) + subtleStyle.Render("…"))
 	case modeModelPicker:
 		m.viewport.SetContent(m.renderPicker())
+	case modeSettings:
+		m.viewport.SetContent(m.renderSettings())
 	default:
 		m.viewport.SetContent(m.renderHistory())
 	}
@@ -377,6 +365,7 @@ func (m Model) handleCommand(input string) (tea.Model, tea.Cmd) {
 			m.cfg.Model = name
 			m.notice = "switched to " + name
 			m.lastErr = nil
+			m.persistConfig()
 			m.refresh()
 			return m, nil
 		}
@@ -385,17 +374,95 @@ func (m Model) handleCommand(input string) (tea.Model, tea.Cmd) {
 		m.notice = ""
 		m.refresh()
 		return m, tea.Batch(fetchModelsCmd(m.client, m.ctx), m.spinner.Tick)
+	case "/settings", "/theme":
+		m.themeOriginal = m.cfg.Theme
+		m.themeCursor = 0
+		for i, name := range themeOrder {
+			if name == m.cfg.Theme {
+				m.themeCursor = i
+				break
+			}
+		}
+		m.mode = modeSettings
+		m.lastErr = nil
+		m.notice = ""
+		m.refresh()
+		return m, nil
 	case "/clear":
 		m.history = chat.New(m.cfg.SystemPrompt)
 		m.lastErr = nil
 		m.notice = "conversation cleared"
+		m.persistState()
 		m.refresh()
 		return m, nil
 	case "/quit", "/exit":
 		return m, tea.Quit
 	}
-	m.lastErr = fmt.Errorf("unknown command: %s (try /model, /clear, /quit)", cmd)
+	m.lastErr = fmt.Errorf("unknown command: %s (try /model, /settings, /clear, /quit)", cmd)
 	return m, nil
+}
+
+// previewTheme applies a theme immediately so the settings screen shows a live
+// preview. It updates the spinner too, then re-renders.
+func (m *Model) previewTheme(name string) {
+	t := themeByName(name)
+	applyTheme(t)
+	m.spinner.Style = lipgloss.NewStyle().Foreground(t.Primary)
+	m.refresh()
+}
+
+func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "up", "k":
+		if m.themeCursor > 0 {
+			m.themeCursor--
+			m.previewTheme(themeOrder[m.themeCursor])
+		}
+	case "down", "j":
+		if m.themeCursor < len(themeOrder)-1 {
+			m.themeCursor++
+			m.previewTheme(themeOrder[m.themeCursor])
+		}
+	case "enter":
+		name := themeOrder[m.themeCursor]
+		m.cfg.Theme = name
+		m.previewTheme(name)
+		m.persistConfig()
+		m.notice = "theme: " + name
+		m.mode = modeChat
+		m.refresh()
+	case "esc":
+		m.previewTheme(m.themeOriginal) // revert the live preview
+		m.mode = modeChat
+		m.refresh()
+	case "ctrl+c":
+		return m, tea.Quit
+	}
+	return m, nil
+}
+
+func (m Model) renderSettings() string {
+	var sb strings.Builder
+	sb.WriteString(welcomeSectionStyle.Render("Settings — theme") + "\n\n")
+	for i, name := range themeOrder {
+		t := themeByName(name)
+		prefix := "   "
+		label := pickerItemStyle.Render(t.Label)
+		if i == m.themeCursor {
+			prefix = " " + pickerArrowStyle.Render("›") + " "
+			label = pickerSelectedStyle.Render(t.Label)
+		}
+		swatch := lipgloss.NewStyle().Foreground(t.Primary).Render("●") +
+			lipgloss.NewStyle().Foreground(t.Accent).Render("●") +
+			lipgloss.NewStyle().Foreground(t.Assistant).Render("●")
+		marker := ""
+		if name == m.cfg.Theme {
+			marker = subtleStyle.Render("  (current)")
+		}
+		sb.WriteString(prefix + label + "  " + swatch + marker + "\n")
+	}
+	sb.WriteString("\n" + subtleStyle.Render("preview is live  ·  enter keep  ·  esc cancel"))
+	return sb.String()
 }
 
 func (m Model) updatePicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -416,6 +483,7 @@ func (m Model) updatePicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.client.SetModel(name)
 			m.cfg.Model = name
 			m.notice = "switched to " + name
+			m.persistConfig()
 		}
 		m.mode = modeChat
 		m.refresh()
@@ -518,6 +586,7 @@ func (m Model) welcomeView() string {
 	commands := lipgloss.JoinVertical(lipgloss.Left,
 		welcomeSectionStyle.Render("Commands"),
 		cmdLine("/model", "pick or switch the model"),
+		cmdLine("/settings", "change the color theme"),
 		cmdLine("/clear", "start a fresh conversation"),
 		cmdLine("/quit", "exit mini-claude"),
 	)
