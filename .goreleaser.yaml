@@ -68,3 +68,13 @@ homebrew_casks:
     homepage: "https://miniclaude.fr"
     description: "A fast, private TUI chat client for self-hosted LLMs."
     license: "MIT"
+    # macOS quarantines unsigned binaries downloaded from the internet, which
+    # makes Gatekeeper kill them (SIGKILL). Strip the quarantine flag on install
+    # so the binary runs without the user needing to do it by hand.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr",
+              args: ["-dr", "com.apple.quarantine", "#{staged_path}/mini-claude"]
+          end
