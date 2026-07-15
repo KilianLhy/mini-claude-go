@@ -1,0 +1,36 @@
+# Local development stack: PostgreSQL + the mini-claude sync server.
+# Usage:  docker compose up --build
+# The server is then reachable on http://localhost:8080
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: miniclaude
+      POSTGRES_PASSWORD: miniclaude
+      POSTGRES_DB: miniclaude
+    ports:
+      # Host port 5433 to avoid clashing with a local Postgres on 5432.
+      # The server still connects to db:5432 inside the Docker network.
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U miniclaude"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build: .
+    environment:
+      DATABASE_URL: postgres://miniclaude:miniclaude@db:5432/miniclaude?sslmode=disable
+      JWT_SECRET: dev-secret-change-me
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

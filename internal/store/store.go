@@ -14,15 +14,26 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 
 	"gitlab.com/marseille-bb/mini-claude/internal/shared"
 )
 
 const (
-	appDir     = "mini-claude"
-	configFile = "config.json"
-	stateFile  = "state.json"
+	appDir          = "mini-claude"
+	configFile      = "config.json"
+	stateFile       = "state.json"
+	credentialsFile = "credentials.json"
 )
+
+// Credentials is the locally stored authentication session. It is kept out of
+// config.json on purpose: the config gets synced to the server, the token must
+// not.
+type Credentials struct {
+	Email     string    `json:"email"`
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
 
 // Dir returns the mini-claude config directory, creating it if needed.
 func Dir() (string, error) {
@@ -118,4 +129,29 @@ func LoadState() (shared.State, error) {
 // SaveState writes the state to state.json.
 func SaveState(st shared.State) error {
 	return save(stateFile, st)
+}
+
+// LoadCredentials reads the saved auth session. found is false when the user
+// has never logged in.
+func LoadCredentials() (creds Credentials, found bool, err error) {
+	found, err = loadInto(credentialsFile, &creds)
+	return creds, found, err
+}
+
+// SaveCredentials persists the auth session (token) locally.
+func SaveCredentials(creds Credentials) error {
+	return save(credentialsFile, creds)
+}
+
+// ClearCredentials removes the saved auth session (logout). A missing file is
+// not an error.
+func ClearCredentials() error {
+	dir, err := Dir()
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(filepath.Join(dir, credentialsFile)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
 }

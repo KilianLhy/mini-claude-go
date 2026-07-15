@@ -23,6 +23,7 @@ type Config struct {
 	Temperature  float64 `json:"temperature"`
 	SystemPrompt string  `json:"system_prompt"`
 	Theme        string  `json:"theme"`
+	ServerURL    string  `json:"server_url"`
 }
 
 // Message is a single chat turn. The JSON tags are kept identical to the

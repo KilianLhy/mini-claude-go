@@ -7,10 +7,12 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"gitlab.com/marseille-bb/mini-claude/internal/apiclient"
 	"gitlab.com/marseille-bb/mini-claude/internal/chat"
 	"gitlab.com/marseille-bb/mini-claude/internal/client"
 	"gitlab.com/marseille-bb/mini-claude/internal/config"
@@ -25,6 +27,8 @@ const (
 	modeModelLoading
 	modeModelPicker
 	modeSettings
+	modeAuth
+	modeHelp
 )
 
 type Model struct {
@@ -36,6 +40,13 @@ type Model struct {
 	viewport viewport.Model
 	textarea textarea.Model
 	spinner  spinner.Model
+
+	api           *apiclient.Client
+	authEmail     textinput.Model
+	authPass      textinput.Model
+	authFocus     int  // 0 = email, 1 = password
+	authRegister  bool // register vs login mode on the auth screen
+	loggedInEmail string
 
 	streaming bool
 	current   string
@@ -88,14 +99,34 @@ func New(cfg config.Config, cli *client.Client, ctx context.Context) Model {
 		notice = "could not load saved history (starting fresh)"
 	}
 
+	// Auth inputs for the sign-in screen.
+	emailInput := textinput.New()
+	emailInput.Placeholder = "you@example.com"
+	emailInput.CharLimit = 254
+	passInput := textinput.New()
+	passInput.Placeholder = "password"
+	passInput.EchoMode = textinput.EchoPassword
+	passInput.CharLimit = 128
+
+	// Restore a saved login session, if any, so the user stays logged in.
+	var loggedInEmail, token string
+	if creds, found, _ := store.LoadCredentials(); found {
+		loggedInEmail = creds.Email
+		token = creds.Token
+	}
+
 	return Model{
-		cfg:      cfg,
-		client:   cli,
-		history:  chat.Load(cfg.SystemPrompt, st.Messages),
-		ctx:      ctx,
-		textarea: ta,
-		spinner:  sp,
-		notice:   notice,
+		cfg:           cfg,
+		client:        cli,
+		history:       chat.Load(cfg.SystemPrompt, st.Messages),
+		ctx:           ctx,
+		textarea:      ta,
+		spinner:       sp,
+		notice:        notice,
+		api:           apiclient.New(cfg.ServerURL, token),
+		authEmail:     emailInput,
+		authPass:      passInput,
+		loggedInEmail: loggedInEmail,
 	}
 }
 
@@ -150,11 +181,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ready = true
 
 	case tea.KeyMsg:
+		if m.mode == modeAuth {
+			return m.updateAuth(msg)
+		}
 		if m.mode == modeSettings {
 			return m.updateSettings(msg)
 		}
 		if m.mode == modeModelPicker {
 			return m.updatePicker(msg)
+		}
+		if m.mode == modeHelp {
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			m.mode = modeChat
+			m.refresh()
+			return m, nil
 		}
 		if m.mode == modeModelLoading {
 			if s := msg.String(); s == "esc" || s == "ctrl+c" {
@@ -235,6 +277,48 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.refresh()
 		return m, nil
 
+	case authDoneMsg:
+		if msg.err != nil {
+			// Stay on the auth screen so the user can retry.
+			m.notice = ""
+			m.lastErr = msg.err
+			m.refresh()
+			return m, nil
+		}
+		m.api.SetToken(msg.creds.Token)
+		m.loggedInEmail = msg.creds.Email
+		m.lastErr = nil
+		if err := store.SaveCredentials(msg.creds); err != nil {
+			m.notice = "signed in (could not save session)"
+		} else {
+			m.notice = "signed in as " + msg.creds.Email
+		}
+		m.mode = modeChat
+		m.refresh()
+		return m, nil
+
+	case syncDoneMsg:
+		if msg.err != nil {
+			m.lastErr = msg.err
+			m.notice = ""
+			m.refresh()
+			return m, nil
+		}
+		m.lastErr = nil
+		switch msg.verb {
+		case "export":
+			m.notice = "exported to server (backup #" + msg.backupID + ")"
+		case "import":
+			if msg.payload.UpdatedAt.IsZero() {
+				m.notice = "nothing to import (server is empty)"
+			} else {
+				m.applyImported(msg.payload)
+				m.notice = "imported from server"
+			}
+		}
+		m.refresh()
+		return m, nil
+
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
@@ -255,8 +339,12 @@ func (m Model) View() string {
 		return "loading…"
 	}
 
+	account := "not signed in"
+	if m.loggedInEmail != "" {
+		account = m.loggedInEmail
+	}
 	header := headerStyle.Render("mini-claude") +
-		subtleStyle.Render(fmt.Sprintf("  model: %s  ·  %s", m.cfg.Model, m.cfg.BaseURL))
+		subtleStyle.Render(fmt.Sprintf("  model: %s  ·  %s  ·  %s", m.cfg.Model, m.cfg.BaseURL, account))
 
 	status := m.statusLine()
 
@@ -276,6 +364,10 @@ func (m Model) statusLine() string {
 		return subtleStyle.Render("↑/↓ navigate  ·  enter select  ·  esc cancel")
 	case modeSettings:
 		return subtleStyle.Render("↑/↓ preview theme  ·  enter keep  ·  esc cancel")
+	case modeAuth:
+		return subtleStyle.Render("tab switch  ·  enter submit  ·  ctrl+r login/register  ·  esc cancel")
+	case modeHelp:
+		return subtleStyle.Render("press any key to return")
 	}
 	hint := subtleStyle.Render("enter send · ctrl+j newline · /model · /clear · esc/ctrl+c quit")
 	if m.lastErr != nil {
@@ -324,6 +416,10 @@ func (m *Model) refresh() {
 		m.viewport.SetContent(m.renderPicker())
 	case modeSettings:
 		m.viewport.SetContent(m.renderSettings())
+	case modeAuth:
+		m.viewport.SetContent(m.renderAuth())
+	case modeHelp:
+		m.viewport.SetContent(m.renderHelp())
 	default:
 		m.viewport.SetContent(m.renderHistory())
 	}
@@ -354,10 +450,50 @@ func (m Model) renderPicker() string {
 	return sb.String()
 }
 
+func (m Model) renderHelp() string {
+	cmdW := lipgloss.NewStyle().Width(12)
+	line := func(name, desc string) string {
+		return cmdW.Render(welcomeAccentStyle.Bold(true).Render(name)) + welcomeLabelStyle.Render(desc)
+	}
+	section := func(title string) string {
+		return welcomeSectionStyle.Render(title)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(section("Chat") + "\n")
+	sb.WriteString(line("enter", "send your message") + "\n")
+	sb.WriteString(line("ctrl+j", "insert a newline") + "\n\n")
+
+	sb.WriteString(section("Commands") + "\n")
+	sb.WriteString(line("/help", "show this help") + "\n")
+	sb.WriteString(line("/model", "pick or switch the model") + "\n")
+	sb.WriteString(line("/settings", "change the color theme") + "\n")
+	sb.WriteString(line("/clear", "start a fresh conversation") + "\n\n")
+
+	sb.WriteString(section("Account & sync") + "\n")
+	sb.WriteString(line("/login", "sign in to your account") + "\n")
+	sb.WriteString(line("/register", "create a new account") + "\n")
+	sb.WriteString(line("/logout", "sign out of this device") + "\n")
+	sb.WriteString(line("/export", "push config + history to the server") + "\n")
+	sb.WriteString(line("/import", "pull config + history from the server") + "\n\n")
+
+	sb.WriteString(section("Quit") + "\n")
+	sb.WriteString(line("/quit", "exit mini-claude") + "\n")
+	sb.WriteString(line("esc / ctrl+c", "exit mini-claude") + "\n")
+
+	return sb.String()
+}
+
 func (m Model) handleCommand(input string) (tea.Model, tea.Cmd) {
 	parts := strings.Fields(input)
 	cmd := parts[0]
 	switch cmd {
+	case "/help", "/?":
+		m.mode = modeHelp
+		m.lastErr = nil
+		m.notice = ""
+		m.refresh()
+		return m, nil
 	case "/model":
 		if len(parts) > 1 {
 			name := parts[1]
@@ -374,6 +510,42 @@ func (m Model) handleCommand(input string) (tea.Model, tea.Cmd) {
 		m.notice = ""
 		m.refresh()
 		return m, tea.Batch(fetchModelsCmd(m.client, m.ctx), m.spinner.Tick)
+	case "/login", "/signin":
+		m.openAuth(false)
+		return m, nil
+	case "/register", "/signup":
+		m.openAuth(true)
+		return m, nil
+	case "/logout":
+		m.api.SetToken("")
+		m.loggedInEmail = ""
+		if err := store.ClearCredentials(); err != nil {
+			m.lastErr = err
+		} else {
+			m.notice = "signed out"
+		}
+		m.refresh()
+		return m, nil
+	case "/export":
+		if m.api.Token() == "" {
+			m.lastErr = fmt.Errorf("sign in first with /login")
+			m.refresh()
+			return m, nil
+		}
+		m.notice = "exporting…"
+		m.lastErr = nil
+		m.refresh()
+		return m, exportCmd(m.api, m.ctx, m.currentPayload())
+	case "/import":
+		if m.api.Token() == "" {
+			m.lastErr = fmt.Errorf("sign in first with /login")
+			m.refresh()
+			return m, nil
+		}
+		m.notice = "importing…"
+		m.lastErr = nil
+		m.refresh()
+		return m, importCmd(m.api, m.ctx)
 	case "/settings", "/theme":
 		m.themeOriginal = m.cfg.Theme
 		m.themeCursor = 0
@@ -398,7 +570,7 @@ func (m Model) handleCommand(input string) (tea.Model, tea.Cmd) {
 	case "/quit", "/exit":
 		return m, tea.Quit
 	}
-	m.lastErr = fmt.Errorf("unknown command: %s (try /model, /settings, /clear, /quit)", cmd)
+	m.lastErr = fmt.Errorf("unknown command: %s (try /model, /settings, /login, /export, /import, /clear, /quit)", cmd)
 	return m, nil
 }
 
@@ -585,8 +757,12 @@ func (m Model) welcomeView() string {
 	}
 	commands := lipgloss.JoinVertical(lipgloss.Left,
 		welcomeSectionStyle.Render("Commands"),
+		cmdLine("/help", "show all commands"),
 		cmdLine("/model", "pick or switch the model"),
 		cmdLine("/settings", "change the color theme"),
+		cmdLine("/login", "sign in to sync your data"),
+		cmdLine("/export", "push config + history to the server"),
+		cmdLine("/import", "pull config + history from the server"),
 		cmdLine("/clear", "start a fresh conversation"),
 		cmdLine("/quit", "exit mini-claude"),
 	)
