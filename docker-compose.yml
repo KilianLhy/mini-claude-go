@@ -1,7 +1,10 @@
-# Local development stack: PostgreSQL + the mini-claude sync server.
+# Local development stack:
+#   - mini-claude app: PostgreSQL + the sync server
+#   - local LLM: Ollama (+ init to pull a model)
+#   - monitoring: Prometheus, Grafana, node-exporter, cAdvisor
 # Usage:  docker compose up --build
-# The server is then reachable on http://localhost:8080
 services:
+  # --- mini-claude application ---------------------------------------------
   db:
     image: postgres:16
     environment:
@@ -10,7 +13,6 @@ services:
       POSTGRES_DB: miniclaude
     ports:
       # Host port 5433 to avoid clashing with a local Postgres on 5432.
-      # The server still connects to db:5432 inside the Docker network.
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -32,5 +34,84 @@ services:
       db:
         condition: service_healthy
 
+  # --- local LLM (Ollama) --------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "${OLLAMA_PORT}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  ollama-init:
+    image: alpine/curl:8.19.0
+    container_name: ollama-init
+    environment:
+      - OLLAMA_MODELS=${OLLAMA_MODELS}
+      - OLLAMA_PORT=${OLLAMA_PORT}
+    depends_on:
+      - ollama
+    volumes:
+      - ./ollama-init.sh:/ollama-init.sh
+    entrypoint: ["sh", "/ollama-init.sh"]
+    restart: "no"
+
+  # --- monitoring ----------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    pid: host
+    command:
+      - "--path.rootfs=/host"
+    volumes:
+      - "/:/host:ro"
+    ports:
+      - "9100:9100"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - "/:/rootfs:ro"
+      - "/var/run:/var/run:ro"
+      - "/sys:/sys:ro"
+      - "/var/lib/docker:/var/lib/docker:ro"
+      - "/dev/disk:/dev/disk:ro"
+    ports:
+      # Host 8081 to avoid clashing with the app server on 8080.
+      - "8081:8080"
+
 volumes:
   pgdata:
+  ollama_data:
+  prometheus_data:
+  grafana_data:
