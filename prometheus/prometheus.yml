@@ -17,3 +17,9 @@ scrape_configs:
     static_configs:
       - targets:
           - cadvisor:8080
+
+  # The mini-claude API exposes application metrics on /metrics.
+  - job_name: mini-claude
+    static_configs:
+      - targets:
+          - server:8080

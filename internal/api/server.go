@@ -20,11 +20,14 @@ func NewServer(store Store, jwtSecret []byte) *Server {
 // Router builds the Gin engine with all routes registered.
 func (s *Server) Router() *gin.Engine {
 	r := gin.New()
-	r.Use(gin.Logger(), gin.Recovery())
+	r.Use(gin.Logger(), gin.Recovery(), metricsMiddleware())
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+
+	// Prometheus scrape endpoint.
+	r.GET("/metrics", metricsHandler())
 
 	// Public auth endpoints.
 	r.POST(shared.RouteRegister, s.handleRegister)

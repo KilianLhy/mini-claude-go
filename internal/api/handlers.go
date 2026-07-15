@@ -44,14 +44,17 @@ func (s *Server) handleRegister(c *gin.Context) {
 
 	user, err := s.store.CreateUser(c.Request.Context(), req.Email, hash)
 	if errors.Is(err, ErrEmailTaken) {
+		authEvents.WithLabelValues("register", "failure").Inc()
 		c.JSON(http.StatusConflict, errorBody("email already registered"))
 		return
 	}
 	if err != nil {
+		authEvents.WithLabelValues("register", "failure").Inc()
 		c.JSON(http.StatusInternalServerError, errorBody("could not create account"))
 		return
 	}
 
+	authEvents.WithLabelValues("register", "success").Inc()
 	s.respondToken(c, user.ID)
 }
 
@@ -67,6 +70,7 @@ func (s *Server) handleLogin(c *gin.Context) {
 	// Same response for unknown email and wrong password: don't leak which
 	// accounts exist.
 	if errors.Is(err, ErrNotFound) || (err == nil && !checkPassword(user.PasswordHash, req.Password)) {
+		authEvents.WithLabelValues("login", "failure").Inc()
 		c.JSON(http.StatusUnauthorized, errorBody("invalid email or password"))
 		return
 	}
@@ -75,6 +79,7 @@ func (s *Server) handleLogin(c *gin.Context) {
 		return
 	}
 
+	authEvents.WithLabelValues("login", "success").Inc()
 	s.respondToken(c, user.ID)
 }
 
@@ -135,11 +140,13 @@ func (s *Server) handleExport(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, errorBody("could not create backup"))
 		return
 	}
+	syncEvents.WithLabelValues("export").Inc()
 	c.JSON(http.StatusCreated, backup)
 }
 
 // handleImport returns the user's current data (pull from server).
 func (s *Server) handleImport(c *gin.Context) {
+	syncEvents.WithLabelValues("import").Inc()
 	s.handleGetData(c)
 }
 
