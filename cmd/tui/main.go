@@ -9,9 +9,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/client"
-	"gitlab.com/marseille-bb/mini-claude/internal/config"
-	"gitlab.com/marseille-bb/mini-claude/internal/ui"
+	"github.com/KilianLhy/mini-claude-go/internal/client"
+	"github.com/KilianLhy/mini-claude-go/internal/config"
+	"github.com/KilianLhy/mini-claude-go/internal/ui"
 )
 
 // version is injected at build time by GoReleaser via -ldflags; it stays

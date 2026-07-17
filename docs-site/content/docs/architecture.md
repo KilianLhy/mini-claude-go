@@ -5,17 +5,18 @@ weight: 4
 
 # Architecture
 
-The CLI works fully offline (chat via local Ollama). The server is an optional
-sync layer: sign in to back up and restore your data.
+La CLI fonctionne entièrement hors-ligne (le chat passe par Ollama en local). Le
+serveur est une couche de synchronisation optionnelle : connecte-toi pour
+sauvegarder et restaurer tes données.
 
 ```
- TUI client (Go)                     Sync server (Go)            Storage
+ Client TUI (Go)                     Serveur de synchro (Go)      Stockage
 ┌────────────────┐   HTTP/JSON     ┌──────────────────┐        ┌────────────┐
-│  Bubble Tea    │ ───────────────▶│  Gin REST API    │───────▶│ PostgreSQL │
-│  chat, auth,   │   (JWT auth)    │  auth, data,     │  JSONB │ users/data │
-│  settings      │◀─────────────── │  export, backups │        │ backups    │
+│  Bubble Tea    │ ───────────────▶│  API REST Gin    │───────▶│ PostgreSQL │
+│  chat, auth,   │   (auth JWT)    │  auth, données,  │  JSONB │ users/data │
+│  réglages      │◀─────────────── │  export, backups │        │ backups    │
 └───────┬────────┘                 └────────┬─────────┘        └────────────┘
-        │ OpenAI-compatible                 │ /metrics
+        │ compatible OpenAI                 │ /metrics
         ▼ HTTP (local)                       ▼
    ┌──────────┐                      ┌──────────────┐
    │  Ollama  │                      │ Prometheus + │
@@ -23,26 +24,33 @@ sync layer: sign in to back up and restore your data.
    └──────────┘                      └──────────────┘
 ```
 
-## Code layout
+C'est **la CLI** qui parle à Ollama, directement — le serveur ne fait jamais
+d'inférence. Ça garde les prompts en local (confidentialité), permet le mode
+hors-ligne, et laisse le serveur assez léger pour être hébergé gratuitement.
+
+## Organisation du code
 
 ```
-cmd/tui/          CLI entry point
-cmd/server/       server entry point
-internal/ui/      Bubble Tea model, views, themes, auth screen
-internal/client/  Ollama streaming client
-internal/chat/    conversation history
-internal/config/  configuration loading
-internal/store/   local JSON persistence (config, state, credentials)
-internal/apiclient/ HTTP client for the sync server
-internal/api/     Gin server: handlers, auth, stores, metrics
-internal/shared/  the JSON contract shared by CLI and server
+cmd/tui/          point d'entrée de la CLI
+cmd/server/       point d'entrée du serveur
+internal/ui/      modèle Bubble Tea, vues, thèmes, écran d'auth
+internal/client/  client de streaming Ollama
+internal/chat/    historique de conversation
+internal/config/  chargement de la configuration
+internal/store/   persistance JSON locale (config, état, identifiants)
+internal/apiclient/ client HTTP vers le serveur de synchro
+internal/api/     serveur Gin : handlers, auth, stockage, métriques
+internal/shared/  le contrat JSON partagé par la CLI et le serveur
 ```
 
-## Design notes
+## Choix de conception
 
-- **Single source of truth for the wire format**: `internal/shared` defines the
-  JSON types imported by both the CLI and the server, so they can never drift.
-- **Pluggable storage**: the server talks to a `Store` interface, implemented by
-  a PostgreSQL backend (production) and an in-memory backend (tests / zero-setup).
-- **Offline-first**: a missing or corrupt local file falls back to defaults; the
-  CLI never crashes when the server or Ollama is unreachable.
+- **Une seule source de vérité pour le format d'échange** : `internal/shared`
+  définit les types JSON importés à la fois par la CLI et le serveur — ils ne
+  peuvent donc jamais diverger.
+- **Stockage interchangeable** : le serveur parle à une interface `Store`,
+  implémentée par un backend PostgreSQL (production) et un backend en mémoire
+  (tests / zéro configuration).
+- **Local d'abord** : un fichier local absent ou corrompu retombe sur les
+  valeurs par défaut ; la CLI ne plante jamais si le serveur ou Ollama est
+  injoignable.

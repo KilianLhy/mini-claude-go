@@ -19,7 +19,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/api"
+	"github.com/KilianLhy/mini-claude-go/internal/api"
 )
 
 func main() {

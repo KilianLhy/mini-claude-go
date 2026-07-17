@@ -7,9 +7,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/api"
-	"gitlab.com/marseille-bb/mini-claude/internal/apiclient"
-	"gitlab.com/marseille-bb/mini-claude/internal/shared"
+	"github.com/KilianLhy/mini-claude-go/internal/api"
+	"github.com/KilianLhy/mini-claude-go/internal/apiclient"
+	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
 // TestClientAgainstServer exercises the real HTTP client against the real Gin

@@ -57,7 +57,7 @@
 
 - **Observabilité** : endpoint `/metrics` (client Prometheus), scraping Prometheus, et **dashboard Grafana provisionné automatiquement** (métriques applicatives : inscriptions, connexions, exports/imports, latences par route ; + métriques conteneurs via cAdvisor/node-exporter).
 - **Tests** : suites pour le store, l'API et le client HTTP (`go test ./...`).
-- **CI/CD** : pipeline GitLab (lint/build/test + release GoReleaser sur tag).
+- **CI/CD** : GitHub Actions (build/vet/test + release GoReleaser sur tag).
 
 ## Total
 

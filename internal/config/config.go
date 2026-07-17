@@ -4,8 +4,8 @@ import (
 	"os"
 	"strconv"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/shared"
-	"gitlab.com/marseille-bb/mini-claude/internal/store"
+	"github.com/KilianLhy/mini-claude-go/internal/shared"
+	"github.com/KilianLhy/mini-claude-go/internal/store"
 )
 
 // Config is the shared contract type. Aliasing keeps a single definition used

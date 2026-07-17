@@ -1,4 +1,4 @@
-module gitlab.com/marseille-bb/mini-claude
+module github.com/KilianLhy/mini-claude-go
 
 go 1.26.3
 

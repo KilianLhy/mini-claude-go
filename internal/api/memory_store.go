@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/shared"
+	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
 // MemoryStore is an in-memory Store used by tests and as a zero-setup fallback

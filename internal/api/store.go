@@ -10,7 +10,7 @@ import (
 	"errors"
 	"time"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/shared"
+	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
 // Sentinel errors the storage layer returns; handlers map them to HTTP codes.

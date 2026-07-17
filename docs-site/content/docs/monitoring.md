@@ -1,33 +1,34 @@
 ---
-title: Monitoring
+title: Supervision
 weight: 7
 ---
 
-# Monitoring
+# Supervision
 
-The server exposes application metrics on `/metrics` using the Prometheus Go
-client. The local Docker stack ships a full observability setup:
+Le serveur expose des métriques applicatives sur `/metrics` grâce au client Go
+de Prometheus. La stack Docker locale embarque une supervision complète :
 
-- **Prometheus** scrapes the server, plus node-exporter (host) and cAdvisor
-  (containers).
-- **Grafana** auto-provisions a data source and a **mini-claude** dashboard.
+- **Prometheus** scrape le serveur, plus node-exporter (machine) et cAdvisor
+  (conteneurs).
+- **Grafana** provisionne automatiquement une source de données et un tableau de
+  bord **mini-claude**.
 
-## Metrics exposed
+## Métriques exposées
 
-| Metric | Meaning |
+| Métrique | Signification |
 |---|---|
-| `miniclaude_http_requests_total` | requests by method, route, status |
-| `miniclaude_http_request_duration_seconds` | request latency histogram |
-| `miniclaude_auth_events_total` | registrations / logins (success & failure) |
+| `miniclaude_http_requests_total` | requêtes par méthode, route, statut |
+| `miniclaude_http_request_duration_seconds` | histogramme des latences |
+| `miniclaude_auth_events_total` | inscriptions / connexions (succès & échec) |
 | `miniclaude_sync_events_total` | exports / imports |
 
-## Access
+## Accès
 
-With the stack running (`docker compose up -d`):
+Avec la stack lancée (`docker compose up -d`) :
 
-- Grafana → <http://localhost:3000> (admin / admin) → dashboard
+- Grafana → <http://localhost:3000> (admin / admin) → tableau de bord
   **mini-claude — application & infra**
-- Prometheus → <http://localhost:9090> (`/targets` to check scrape health)
+- Prometheus → <http://localhost:9090> (`/targets` pour vérifier l'état du scrape)
 
-Application panels fill once traffic hits the server; container CPU/memory
-panels populate automatically via cAdvisor.
+Les panneaux applicatifs se remplissent dès qu'il y a du trafic sur le serveur ;
+les panneaux CPU/mémoire des conteneurs se remplissent tout seuls via cAdvisor.

@@ -5,24 +5,25 @@ type: docs
 
 # mini-claude
 
-A fast, private TUI chat client for self-hosted LLMs, written in Go — with a
-companion sync server so your conversations and settings follow you across
-machines.
+Un client de chat rapide et privé pour LLM auto-hébergés, en Go — accompagné
+d'un serveur de synchronisation pour que tes conversations et réglages te
+suivent d'une machine à l'autre.
 
-Talk to a local language model from your terminal. Inference stays on your
-machine (via [Ollama](https://ollama.com)); an optional account lets you back
-up and restore your config and history from your own server.
+Discute avec un modèle de langage local depuis ton terminal. L'inférence reste
+sur ta machine (via [Ollama](https://ollama.com)) ; un compte optionnel te
+permet de sauvegarder et restaurer ta config et ton historique depuis ton
+propre serveur.
 
-## Highlights
+## Points forts
 
-- **Terminal UI** (Bubble Tea) — streaming responses, multi-turn chat, themes.
-- **Local-first** — settings and history stored as JSON in your config directory.
-- **Account & sync** — sign in, then push/pull your data to a self-hosted server.
-- **REST server** — Gin + PostgreSQL (JSONB), JWT auth, per-user backups.
-- **Observability** — Prometheus metrics + a provisioned Grafana dashboard.
+- **Interface terminal** (Bubble Tea) — réponses en streaming, chat multi-tours, thèmes.
+- **Local d'abord** — réglages et historique stockés en JSON dans ton dossier de config.
+- **Compte & synchro** — connecte-toi, puis pousse/récupère tes données vers un serveur auto-hébergé.
+- **Serveur REST** — Gin + PostgreSQL (JSONB), authentification JWT, sauvegardes par utilisateur.
+- **Supervision** — métriques Prometheus + un tableau de bord Grafana provisionné.
 
-[**Get started →**](/docs/installation/)
+[**Commencer →**](/docs/installation/)
 
 ---
 
-Built by Hugo Stawiarski · Kilian Lahaye · Moustapha Sow — MIT licensed.
+Réalisé par Hugo Stawiarski · Kilian Lahaye · Moustapha Sow — licence MIT.

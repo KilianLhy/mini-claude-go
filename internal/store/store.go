@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/shared"
+	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
 const (

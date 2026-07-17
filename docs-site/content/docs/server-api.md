@@ -1,42 +1,43 @@
 ---
-title: Server API
+title: API serveur
 weight: 5
 ---
 
-# Server API
+# API serveur
 
-The sync server is a REST API built with Gin. Passwords are hashed with bcrypt;
-`/me/*` routes require an `Authorization: Bearer <jwt>` header. Config and state
-are stored as PostgreSQL JSONB.
+Le serveur de synchronisation est une API REST construite avec Gin. Les mots de
+passe sont hashés avec bcrypt ; les routes `/me/*` exigent un en-tête
+`Authorization: Bearer <jwt>`. La config et l'état sont stockés en JSONB
+PostgreSQL.
 
 ## Endpoints
 
-| Method & path | Auth | Description |
+| Méthode & chemin | Auth | Description |
 |---|---|---|
-| `POST /auth/register` | — | create an account → JWT |
-| `POST /auth/login` | — | sign in → JWT |
-| `GET /me/data` | JWT | read current config + state |
-| `PUT /me/data` | JWT | update current config + state |
-| `POST /me/export` | JWT | push data and create a backup |
-| `POST /me/import` | JWT | pull current data |
-| `GET /me/backups` | JWT | list backups |
-| `GET /me/backups/:id` | JWT | fetch one backup |
-| `GET /health` | — | health check |
-| `GET /metrics` | — | Prometheus metrics |
+| `POST /auth/register` | — | créer un compte → JWT |
+| `POST /auth/login` | — | se connecter → JWT |
+| `GET /me/data` | JWT | lire la config + l'état courants |
+| `PUT /me/data` | JWT | mettre à jour la config + l'état |
+| `POST /me/export` | JWT | pousser les données et créer une sauvegarde |
+| `POST /me/import` | JWT | récupérer les données courantes |
+| `GET /me/backups` | JWT | lister les sauvegardes |
+| `GET /me/backups/:id` | JWT | récupérer une sauvegarde |
+| `GET /health` | — | vérification de santé |
+| `GET /metrics` | — | métriques Prometheus |
 
-## Data model
+## Modèle de données
 
 ```
 users(id, email, password_hash, created_at)
-user_data(user_id, config JSONB, state JSONB, updated_at)   -- current, upsert
-backups(id, user_id, config JSONB, state JSONB, created_at) -- history
+user_data(user_id, config JSONB, state JSONB, updated_at)   -- courant, upsert
+backups(id, user_id, config JSONB, state JSONB, created_at) -- historique
 ```
 
-## Example
+## Exemple
 
 ```bash
-# register → token
+# inscription → token
 curl -X POST https://hugostarte.alwaysdata.net/auth/register \
   -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com","password":"supersecret"}'
+  -d '{"email":"toi@example.com","password":"supersecret"}'
 ```

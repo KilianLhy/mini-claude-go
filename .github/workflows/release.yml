@@ -1,0 +1,32 @@
+name: Release
+
+# Runs GoReleaser on a version tag: cross-compiles the CLI, publishes the GitHub
+# release, and updates the Homebrew tap.
+#
+# Requires a repository secret named RELEASE_TOKEN: a GitHub PAT (classic `repo`
+# scope, or fine-grained with write access to mini-claude-go AND homebrew-tap).
+# The default GITHUB_TOKEN cannot push to the separate homebrew-tap repo.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}

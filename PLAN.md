@@ -20,7 +20,7 @@ stack annoncée dans le README (Go, Bubble Tea, `net/http`, Ollama, Docker, GitL
    (Ollama) fonctionne toujours. Le serveur = couche de **sync optionnelle** (comptes +
    sauvegarde). Si le serveur est down, la CLI dégrade proprement, elle ne plante pas.
 2. **Monorepo, un seul `go.mod`.** Deux binaires : `cmd/tui` (existant) et
-   `cmd/server` (nouveau). Le module reste `gitlab.com/marseille-bb/mini-claude`
+   `cmd/server` (nouveau). Le module reste `github.com/KilianLhy/mini-claude-go`
    (pas de rename, `go install` continue de marcher).
 3. **Un contrat partagé.** Les formats JSON échangés CLI↔serveur (config, state, auth)
    sont définis **une seule fois** dans un paquet `internal/shared` (ou `pkg/api`),

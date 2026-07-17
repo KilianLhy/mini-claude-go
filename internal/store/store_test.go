@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/shared"
+	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
 // redirect points os.UserConfigDir at a temp directory for the test.

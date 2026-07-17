@@ -5,22 +5,24 @@ weight: 1
 
 # Introduction
 
-**mini-claude** is a terminal chat client for self-hosted LLMs, paired with a
-small sync server. It is written in Go and built around three ideas:
+**mini-claude** est un client de chat en terminal pour LLM auto-hébergés,
+associé à un petit serveur de synchronisation. Écrit en Go, il repose sur trois
+idées :
 
-1. **Privacy** — inference runs locally through [Ollama](https://ollama.com);
-   nothing about your prompts leaves your machine unless you choose to sync.
-2. **Local-first** — the CLI works fully offline. Your settings and conversation
-   history are saved as JSON in your config directory.
-3. **Optional sync** — create an account and the server backs up your config and
-   history (PostgreSQL/JSONB), so you can restore them on any machine.
+1. **Confidentialité** — l'inférence tourne en local via
+   [Ollama](https://ollama.com) ; rien de tes prompts ne quitte ta machine, sauf
+   si tu choisis de synchroniser.
+2. **Local d'abord** — la CLI fonctionne entièrement hors-ligne. Tes réglages et
+   ton historique sont sauvegardés en JSON dans ton dossier de config.
+3. **Synchro optionnelle** — crée un compte et le serveur sauvegarde ta config et
+   ton historique (PostgreSQL/JSONB), pour les restaurer sur n'importe quelle machine.
 
-## The two halves
+## Les deux moitiés
 
-| Component | Role | Tech |
+| Composant | Rôle | Techno |
 |---|---|---|
-| **CLI (TUI)** | chat, settings, auth, local persistence | Go, Bubble Tea, Lip Gloss |
-| **Server** | accounts, data sync, backups, metrics | Go, Gin, PostgreSQL, JWT |
+| **CLI (TUI)** | chat, réglages, auth, persistance locale | Go, Bubble Tea, Lip Gloss |
+| **Serveur** | comptes, synchro, sauvegardes, métriques | Go, Gin, PostgreSQL, JWT |
 
-Read on for [installation](/docs/installation/), the
-[commands](/docs/usage/), and the [architecture](/docs/architecture/).
+Poursuis avec l'[installation](/docs/installation/), les
+[commandes](/docs/usage/), et l'[architecture](/docs/architecture/).

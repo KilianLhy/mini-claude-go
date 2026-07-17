@@ -144,7 +144,7 @@ Deployment guide (alwaysdata): [docs/DEPLOY.md](./docs/DEPLOY.md).
 ## Stack
 
 Go · Bubble Tea / Lip Gloss / Bubbles · Gin · PostgreSQL (pgx) · JWT · bcrypt ·
-Ollama · Docker Compose · Prometheus / Grafana · GoReleaser · GitLab CI/CD.
+Ollama · Docker Compose · Prometheus / Grafana · GoReleaser · GitHub Actions.
 
 ## Authors
 

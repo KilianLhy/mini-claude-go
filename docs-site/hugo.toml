@@ -1,6 +1,8 @@
 baseURL = "http://localhost:1313/"
 title = "mini-claude"
 theme = "hugo-book"
+languageCode = "fr-fr"
+defaultContentLanguage = "fr"
 
 disablePathToLower = true
 enableGitInfo = false

@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/chat"
+	"github.com/KilianLhy/mini-claude-go/internal/chat"
 )
 
 type Client struct {

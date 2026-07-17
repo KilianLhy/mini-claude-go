@@ -5,7 +5,7 @@
 # Must exist on GitHub before the first release (initialize it with a README so
 # it has a default branch):
 #   - KilianLhy/homebrew-tap    (Homebrew cask, filled automatically by GoReleaser)
-# Release runs from GitLab CI on a version tag, or locally with
+# Release runs from GitHub Actions on a version tag, or locally with
 # `goreleaser release --clean` and GITHUB_TOKEN set.
 version: 2
 

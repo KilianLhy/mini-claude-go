@@ -1,6 +1,6 @@
 package chat
 
-import "gitlab.com/marseille-bb/mini-claude/internal/shared"
+import "github.com/KilianLhy/mini-claude-go/internal/shared"
 
 // Roles are re-exported from the shared contract so callers of this package
 // need not import two packages for the constants and the type.

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/shared"
+	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
 // Client talks to the sync server. It holds an optional bearer token.

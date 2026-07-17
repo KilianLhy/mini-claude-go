@@ -13,25 +13,26 @@ brew install mini-claude
 mini-claude
 ```
 
-## Pre-built binaries
+## Binaires pré-compilés
 
-Download a binary for Windows, macOS or Linux from the
-[GitHub releases](https://github.com/KilianLhy/mini-claude-go/releases).
+Télécharge un binaire pour Windows, macOS ou Linux depuis les
+[releases GitHub](https://github.com/KilianLhy/mini-claude-go/releases).
 
-## Prerequisite: Ollama
+## Prérequis : Ollama
 
-The CLI needs a running [Ollama](https://ollama.com) with a model pulled:
+La CLI a besoin d'un [Ollama](https://ollama.com) qui tourne, avec un modèle
+téléchargé :
 
 ```bash
 ollama pull llama3.2:3b
 ```
 
-By default the CLI talks to Ollama on `http://localhost:11434`.
+Par défaut, la CLI parle à Ollama sur `http://localhost:11434`.
 
-## From source
+## Depuis les sources
 
 ```bash
-git clone https://gitlab.com/marseille-bb/mini-claude
-cd mini-claude
+git clone https://github.com/KilianLhy/mini-claude-go
+cd mini-claude-go
 go run ./cmd/tui
 ```

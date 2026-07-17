@@ -12,12 +12,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/apiclient"
-	"gitlab.com/marseille-bb/mini-claude/internal/chat"
-	"gitlab.com/marseille-bb/mini-claude/internal/client"
-	"gitlab.com/marseille-bb/mini-claude/internal/config"
-	"gitlab.com/marseille-bb/mini-claude/internal/shared"
-	"gitlab.com/marseille-bb/mini-claude/internal/store"
+	"github.com/KilianLhy/mini-claude-go/internal/apiclient"
+	"github.com/KilianLhy/mini-claude-go/internal/chat"
+	"github.com/KilianLhy/mini-claude-go/internal/client"
+	"github.com/KilianLhy/mini-claude-go/internal/config"
+	"github.com/KilianLhy/mini-claude-go/internal/shared"
+	"github.com/KilianLhy/mini-claude-go/internal/store"
 )
 
 type mode int

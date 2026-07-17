@@ -6,10 +6,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"gitlab.com/marseille-bb/mini-claude/internal/apiclient"
-	"gitlab.com/marseille-bb/mini-claude/internal/chat"
-	"gitlab.com/marseille-bb/mini-claude/internal/shared"
-	"gitlab.com/marseille-bb/mini-claude/internal/store"
+	"github.com/KilianLhy/mini-claude-go/internal/apiclient"
+	"github.com/KilianLhy/mini-claude-go/internal/chat"
+	"github.com/KilianLhy/mini-claude-go/internal/shared"
+	"github.com/KilianLhy/mini-claude-go/internal/store"
 )
 
 // authDoneMsg is the result of a login/register network call.
