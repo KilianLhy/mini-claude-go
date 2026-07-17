@@ -1,0 +1,58 @@
+/*
+  Custom "miniclaude" theme — dark background + orange accent, matching the
+  look of miniclaude.fr. Selected via BookTheme = "miniclaude" in hugo.toml.
+  book.scss imports this file before `@include theme-<BookTheme>`, so the mixin
+  defined here is available when the theme is applied.
+*/
+@mixin theme-miniclaude {
+  --body-background: #111111;
+  --body-background-tint: #171717;
+  --body-font-color: #e8e8e8;
+
+  --color-link: #ff8c42;
+  --color-visited-link: #ff8c42;
+
+  --icon-filter: brightness(0) invert(0.85);
+
+  --gray-100: #1b1b1b;
+  --gray-200: #2b2b2b;
+  --gray-500: #8a8a8a;
+
+  --color-accent-default: #ff8c42;
+  --color-accent-note: #4aa3ff;
+  --color-accent-tip: #33c27f;
+  --color-accent-important: #c07bff;
+  --color-accent-warning: #ffb454;
+  --color-accent-caution: #ff5c5c;
+  --color-accent-info: #4aa3ff;
+  --color-accent-success: #33c27f;
+  --color-accent-danger: #ff5c5c;
+}
+
+/* System font stack, like miniclaude.fr. */
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Orange accents on interactive bits. */
+.book-menu a.active {
+  color: #ff8c42;
+  font-weight: 600;
+}
+.book-menu a:hover,
+.book-toc a:hover {
+  color: #ff8c42;
+}
+#book-search-input:focus {
+  outline-color: #ff8c42;
+}
+
+/* A touch of polish: rounded code blocks and a subtle border on the sidebar. */
+.book-menu {
+  border-right: 1px solid #222;
+}
+pre,
+code {
+  border-radius: 6px;
+}

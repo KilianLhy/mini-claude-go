@@ -1,0 +1,5 @@
+public
+resources
+.hugo_build.lock
+themes/hugo-book/.git
+themes/hugo-book/exampleSite

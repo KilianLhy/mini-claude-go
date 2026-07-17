@@ -101,6 +101,7 @@ docker compose up -d --build
 - Server: <http://localhost:8080> (`/health`, `/metrics`)
 - Grafana: <http://localhost:3000> (admin / admin) — the **mini-claude** dashboard is auto-provisioned
 - Prometheus: <http://localhost:9090>
+- Docs site: <http://localhost:1313> (Hugo)
 
 Point the CLI at the local server for testing:
 

@@ -34,6 +34,12 @@ services:
       db:
         condition: service_healthy
 
+  # --- documentation site (Hugo, built then served by nginx) ---------------
+  docs:
+    build: ./docs-site
+    ports:
+      - "1313:80"
+
   # --- local LLM (Ollama) --------------------------------------------------
   ollama:
     image: ollama/ollama:latest

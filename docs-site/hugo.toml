@@ -1,0 +1,20 @@
+baseURL = "http://localhost:1313/"
+title = "mini-claude"
+theme = "hugo-book"
+
+disablePathToLower = true
+enableGitInfo = false
+
+[params]
+  BookTheme = "miniclaude"
+  BookToC = true
+  BookSection = "docs"
+  BookRepo = "https://github.com/KilianLhy/mini-claude-go"
+  BookSearch = true
+
+[markup]
+  [markup.goldmark.renderer]
+    unsafe = true
+  [markup.highlight]
+    style = "github-dark"
+    noClasses = false
