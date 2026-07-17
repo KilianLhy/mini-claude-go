@@ -39,20 +39,20 @@ services:
     image: ollama/ollama:latest
     container_name: ollama
     ports:
-      - "${OLLAMA_PORT}:11434"
+      - "${OLLAMA_PORT:-11434}:11434"
     volumes:
       - ollama_data:/root/.ollama
 
+  # Pulls the configured model(s) once Ollama is up, then exits.
   ollama-init:
     image: alpine/curl:8.19.0
     container_name: ollama-init
     environment:
-      - OLLAMA_MODELS=${OLLAMA_MODELS}
-      - OLLAMA_PORT=${OLLAMA_PORT}
+      - OLLAMA_MODELS=${OLLAMA_MODELS:-llama3.2:3b}
     depends_on:
       - ollama
     volumes:
-      - ./ollama-init.sh:/ollama-init.sh
+      - ./ollama-init.sh:/ollama-init.sh:ro
     entrypoint: ["sh", "/ollama-init.sh"]
     restart: "no"
 
