@@ -9,16 +9,13 @@ import (
 	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
-// MemoryStore is an in-memory Store used by tests and as a zero-setup fallback
-// for local development when no database is configured. It is safe for
-// concurrent use but does not persist across restarts.
 type MemoryStore struct {
 	mu      sync.Mutex
 	seq     int
-	users   map[string]User               // id -> user
-	byEmail map[string]string             // email -> id
-	data    map[string]shared.DataPayload // userID -> current data
-	backups map[string][]storedBackup     // userID -> backups
+	users   map[string]User
+	byEmail map[string]string
+	data    map[string]shared.DataPayload
+	backups map[string][]storedBackup
 }
 
 type storedBackup struct {
@@ -26,7 +23,6 @@ type storedBackup struct {
 	payload shared.DataPayload
 }
 
-// NewMemoryStore returns an empty in-memory store.
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		users:   map[string]User{},
@@ -113,5 +109,4 @@ func (m *MemoryStore) GetBackup(_ context.Context, userID, backupID string) (sha
 	return shared.DataPayload{}, ErrNotFound
 }
 
-// Close is a no-op for the in-memory store.
 func (m *MemoryStore) Close() {}

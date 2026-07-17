@@ -12,21 +12,18 @@ import (
 	"github.com/KilianLhy/mini-claude-go/internal/store"
 )
 
-// authDoneMsg is the result of a login/register network call.
 type authDoneMsg struct {
 	creds store.Credentials
 	err   error
 }
 
-// syncDoneMsg is the result of an export/import network call.
 type syncDoneMsg struct {
-	verb     string // "export" or "import"
+	verb     string
 	backupID string
 	payload  shared.DataPayload
 	err      error
 }
 
-// currentPayload snapshots the local config + conversation for syncing.
 func (m Model) currentPayload() shared.DataPayload {
 	return shared.DataPayload{
 		Config: m.cfg,
@@ -66,7 +63,6 @@ func importCmd(api *apiclient.Client, ctx context.Context) tea.Cmd {
 	}
 }
 
-// openAuth switches to the authentication screen in login or register mode.
 func (m *Model) openAuth(register bool) {
 	m.mode = modeAuth
 	m.authRegister = register
@@ -79,7 +75,6 @@ func (m *Model) openAuth(register bool) {
 	m.refresh()
 }
 
-// syncAuthFocus focuses the active input and blurs the other.
 func (m *Model) syncAuthFocus() {
 	if m.authFocus == 0 {
 		m.authEmail.Focus()
@@ -131,8 +126,6 @@ func (m Model) updateAuth(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// applyImported replaces local config + conversation with data pulled from the
-// server, then persists it locally.
 func (m *Model) applyImported(payload shared.DataPayload) {
 	m.cfg = payload.Config
 	m.client.SetModel(m.cfg.Model)
@@ -155,7 +148,6 @@ func (m Model) renderAuth() string {
 	sb.WriteString(m.authPass.View() + "\n\n")
 	sb.WriteString(subtleStyle.Render("tab switch field  ·  enter submit  ·  ctrl+r toggle login/register  ·  esc cancel"))
 
-	// Surface the outcome right on the screen (the status line is hidden here).
 	if m.lastErr != nil {
 		sb.WriteString("\n\n" + errorStyle.Render("✗ "+m.lastErr.Error()))
 	} else if m.notice != "" {

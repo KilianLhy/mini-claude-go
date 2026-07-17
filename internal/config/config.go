@@ -8,18 +8,12 @@ import (
 	"github.com/KilianLhy/mini-claude-go/internal/store"
 )
 
-// Config is the shared contract type. Aliasing keeps a single definition used
-// by the CLI, the store, and the server.
 type Config = shared.Config
 
-// DefaultTheme is applied when nothing else specifies one.
 const DefaultTheme = "claude"
 
-// DefaultServerURL is the mini-claude sync server the CLI talks to. Overridable
-// via config.json or MINI_CLAUDE_SERVER (e.g. http://localhost:8080 for local dev).
 const DefaultServerURL = "https://hugostarte.alwaysdata.net"
 
-// Defaults returns the built-in configuration.
 func Defaults() Config {
 	return Config{
 		BaseURL:      "http://localhost:11434",
@@ -31,17 +25,11 @@ func Defaults() Config {
 	}
 }
 
-// Load builds the effective configuration with precedence
-// defaults < config.json < environment variables. It never fails hard: on a
-// corrupt config file it returns the best config it can plus a non-nil error
-// the caller may surface, so the app still starts.
 func Load() (Config, error) {
 	cfg := Defaults()
 
-	// Overlay the saved file (partial merge). A missing file is fine.
 	_, err := store.LoadConfigInto(&cfg)
 
-	// Environment overrides win over the file.
 	if v := os.Getenv("MINI_CLAUDE_URL"); v != "" {
 		cfg.BaseURL = v
 	}
@@ -66,7 +54,6 @@ func Load() (Config, error) {
 	return cfg, err
 }
 
-// Save persists the configuration to config.json.
 func Save(cfg Config) error {
 	return store.SaveConfig(cfg)
 }

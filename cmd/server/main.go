@@ -1,11 +1,3 @@
-// Command server runs the mini-claude sync API.
-//
-// Configuration comes from the environment:
-//
-//	PORT          HTTP port to listen on (default 8080)
-//	DATABASE_URL  PostgreSQL DSN. If empty, an in-memory store is used
-//	              (data is lost on restart) — handy for local testing.
-//	JWT_SECRET    Secret used to sign auth tokens (required in production).
 package main
 
 import (
@@ -23,8 +15,7 @@ import (
 )
 
 func main() {
-	// Run Gin in release mode unless GIN_MODE says otherwise (quiet logs, no
-	// debug warnings in production).
+
 	if os.Getenv("GIN_MODE") == "" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -49,7 +40,6 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	// Shut down gracefully on signal.
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -63,8 +53,6 @@ func main() {
 	}
 }
 
-// openStore returns a PostgreSQL store when DATABASE_URL is set, otherwise an
-// in-memory fallback so the server can run with zero setup.
 func openStore(ctx context.Context) api.Store {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {

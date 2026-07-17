@@ -12,14 +12,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// tokenTTL is how long an issued JWT stays valid.
 const tokenTTL = 24 * time.Hour
 
-// contextUserID is the Gin context key under which the auth middleware stores
-// the authenticated user's ID.
 const contextUserID = "userID"
 
-// hashPassword returns a bcrypt hash of the plaintext password.
 func hashPassword(plain string) (string, error) {
 	h, err := bcrypt.GenerateFromPassword([]byte(plain), bcrypt.DefaultCost)
 	if err != nil {
@@ -28,12 +24,10 @@ func hashPassword(plain string) (string, error) {
 	return string(h), nil
 }
 
-// checkPassword reports whether plain matches the stored bcrypt hash.
 func checkPassword(hash, plain string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain)) == nil
 }
 
-// issueToken signs a JWT carrying the user ID as subject.
 func issueToken(secret []byte, userID string) (token string, expiresAt time.Time, err error) {
 	expiresAt = time.Now().Add(tokenTTL)
 	claims := jwt.RegisteredClaims{
@@ -49,7 +43,6 @@ func issueToken(secret []byte, userID string) (token string, expiresAt time.Time
 	return signed, expiresAt, nil
 }
 
-// parseToken validates a JWT and returns the user ID (subject).
 func parseToken(secret []byte, tokenStr string) (string, error) {
 	claims := &jwt.RegisteredClaims{}
 	_, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
@@ -67,8 +60,6 @@ func parseToken(secret []byte, tokenStr string) (string, error) {
 	return claims.Subject, nil
 }
 
-// authMiddleware rejects requests without a valid "Authorization: Bearer <jwt>"
-// header, and stores the user ID in the context for handlers to read.
 func (s *Server) authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")

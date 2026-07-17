@@ -10,10 +10,8 @@ import (
 	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
-// minPasswordLen is the minimum accepted password length.
 const minPasswordLen = 8
 
-// currentUser reads the user ID the auth middleware stored on the context.
 func currentUser(c *gin.Context) string {
 	v, _ := c.Get(contextUserID)
 	id, _ := v.(string)
@@ -67,8 +65,7 @@ func (s *Server) handleLogin(c *gin.Context) {
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 
 	user, err := s.store.UserByEmail(c.Request.Context(), req.Email)
-	// Same response for unknown email and wrong password: don't leak which
-	// accounts exist.
+
 	if errors.Is(err, ErrNotFound) || (err == nil && !checkPassword(user.PasswordHash, req.Password)) {
 		authEvents.WithLabelValues("login", "failure").Inc()
 		c.JSON(http.StatusUnauthorized, errorBody("invalid email or password"))
@@ -83,7 +80,6 @@ func (s *Server) handleLogin(c *gin.Context) {
 	s.respondToken(c, user.ID)
 }
 
-// respondToken issues a JWT for the user and writes the auth response.
 func (s *Server) respondToken(c *gin.Context, userID string) {
 	token, expiresAt, err := issueToken(s.jwtSecret, userID)
 	if err != nil {
@@ -96,8 +92,7 @@ func (s *Server) respondToken(c *gin.Context, userID string) {
 func (s *Server) handleGetData(c *gin.Context) {
 	data, err := s.store.GetData(c.Request.Context(), currentUser(c))
 	if errors.Is(err, ErrNotFound) {
-		// Nothing synced yet: return an empty payload rather than a 404 so the
-		// client can treat "no remote data" uniformly.
+
 		c.JSON(http.StatusOK, shared.DataPayload{})
 		return
 	}
@@ -122,8 +117,6 @@ func (s *Server) handlePutData(c *gin.Context) {
 	c.JSON(http.StatusOK, data)
 }
 
-// handleExport saves the posted config+state as the current data AND creates a
-// timestamped backup.
 func (s *Server) handleExport(c *gin.Context) {
 	var payload shared.DataPayload
 	if err := c.ShouldBindJSON(&payload); err != nil {
@@ -144,7 +137,6 @@ func (s *Server) handleExport(c *gin.Context) {
 	c.JSON(http.StatusCreated, backup)
 }
 
-// handleImport returns the user's current data (pull from server).
 func (s *Server) handleImport(c *gin.Context) {
 	syncEvents.WithLabelValues("import").Inc()
 	s.handleGetData(c)

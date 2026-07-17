@@ -1,6 +1,3 @@
-// Package apiclient is the CLI-side HTTP client for the mini-claude sync
-// server. It speaks the shared contract and is used by the TUI to register,
-// log in, and push/pull the user's config and state.
 package apiclient
 
 import (
@@ -16,14 +13,12 @@ import (
 	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
-// Client talks to the sync server. It holds an optional bearer token.
 type Client struct {
 	baseURL string
 	token   string
 	http    *http.Client
 }
 
-// New builds a client for baseURL with an optional existing token.
 func New(baseURL, token string) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
@@ -32,14 +27,10 @@ func New(baseURL, token string) *Client {
 	}
 }
 
-// SetToken updates the bearer token (after login) or clears it (logout).
 func (c *Client) SetToken(token string) { c.token = token }
 
-// Token returns the current bearer token ("" when logged out).
 func (c *Client) Token() string { return c.token }
 
-// doJSON performs a JSON request, decoding into out (may be nil). Non-2xx
-// responses are turned into an error carrying the server's message.
 func (c *Client) doJSON(ctx context.Context, method, path string, body, out any) error {
 	var reader io.Reader
 	if body != nil {
@@ -84,7 +75,6 @@ func (c *Client) doJSON(ctx context.Context, method, path string, body, out any)
 	return nil
 }
 
-// Register creates an account and returns an auth token.
 func (c *Client) Register(ctx context.Context, email, password string) (shared.AuthResponse, error) {
 	var out shared.AuthResponse
 	err := c.doJSON(ctx, http.MethodPost, shared.RouteRegister,
@@ -92,7 +82,6 @@ func (c *Client) Register(ctx context.Context, email, password string) (shared.A
 	return out, err
 }
 
-// Login authenticates and returns an auth token.
 func (c *Client) Login(ctx context.Context, email, password string) (shared.AuthResponse, error) {
 	var out shared.AuthResponse
 	err := c.doJSON(ctx, http.MethodPost, shared.RouteLogin,
@@ -100,14 +89,12 @@ func (c *Client) Login(ctx context.Context, email, password string) (shared.Auth
 	return out, err
 }
 
-// Export pushes the current config+state and creates a server-side backup.
 func (c *Client) Export(ctx context.Context, payload shared.DataPayload) (shared.BackupSummary, error) {
 	var out shared.BackupSummary
 	err := c.doJSON(ctx, http.MethodPost, shared.RouteExport, payload, &out)
 	return out, err
 }
 
-// Import pulls the current config+state from the server.
 func (c *Client) Import(ctx context.Context) (shared.DataPayload, error) {
 	var out shared.DataPayload
 	err := c.doJSON(ctx, http.MethodPost, shared.RouteImport, nil, &out)

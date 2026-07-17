@@ -8,12 +8,10 @@ import (
 	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
-// redirect points os.UserConfigDir at a temp directory for the test.
 func redirect(t *testing.T) {
 	t.Helper()
 	dir := t.TempDir()
-	// Linux uses XDG_CONFIG_HOME; macOS/Windows use HOME/AppData. Set the
-	// common ones so the test is portable.
+
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	t.Setenv("HOME", dir)
 	t.Setenv("AppData", dir)
@@ -48,7 +46,6 @@ func TestConfigRoundTrip(t *testing.T) {
 func TestConfigPartialMergeKeepsDefaults(t *testing.T) {
 	redirect(t)
 
-	// Simulate an older/partial config file with only one field set.
 	dir, err := Dir()
 	if err != nil {
 		t.Fatalf("Dir: %v", err)

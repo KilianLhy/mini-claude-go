@@ -15,8 +15,6 @@ import (
 	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
-// PostgresStore persists users, current data, and backups in PostgreSQL.
-// Config and State are stored as JSONB columns.
 type PostgresStore struct {
 	pool *pgxpool.Pool
 }
@@ -44,8 +42,6 @@ CREATE TABLE IF NOT EXISTS backups (
 CREATE INDEX IF NOT EXISTS backups_user_idx ON backups (user_id, created_at DESC);
 `
 
-// NewPostgresStore connects to the database, verifies the connection, and
-// applies the schema (idempotent).
 func NewPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
@@ -62,7 +58,6 @@ func NewPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
 	return &PostgresStore{pool: pool}, nil
 }
 
-// parseID converts a string user/backup ID to the bigint used by the database.
 func parseID(id string) (int64, bool) {
 	n, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
@@ -82,7 +77,7 @@ func (p *PostgresStore) CreateUser(ctx context.Context, email, passwordHash stri
 	).Scan(&id, &createdAt)
 
 	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		return User{}, ErrEmailTaken
 	}
 	if err != nil {
@@ -225,12 +220,10 @@ func (p *PostgresStore) GetBackup(ctx context.Context, userID, backupID string) 
 	return decodePayload(cfgRaw, stRaw, createdAt)
 }
 
-// Close releases the connection pool.
 func (p *PostgresStore) Close() {
 	p.pool.Close()
 }
 
-// encode marshals config and state to JSON for JSONB storage.
 func encode(cfg shared.Config, st shared.State) (cfgRaw, stRaw []byte, err error) {
 	if cfgRaw, err = json.Marshal(cfg); err != nil {
 		return nil, nil, fmt.Errorf("encode config: %w", err)
@@ -241,7 +234,6 @@ func encode(cfg shared.Config, st shared.State) (cfgRaw, stRaw []byte, err error
 	return cfgRaw, stRaw, nil
 }
 
-// decodePayload unmarshals JSONB columns back into a DataPayload.
 func decodePayload(cfgRaw, stRaw []byte, at time.Time) (shared.DataPayload, error) {
 	var d shared.DataPayload
 	if err := json.Unmarshal(cfgRaw, &d.Config); err != nil {

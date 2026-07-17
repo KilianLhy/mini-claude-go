@@ -12,8 +12,6 @@ import (
 	"github.com/KilianLhy/mini-claude-go/internal/shared"
 )
 
-// TestClientAgainstServer exercises the real HTTP client against the real Gin
-// router, proving the CLI and server agree on the wire format end to end.
 func TestClientAgainstServer(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	srv := api.NewServer(api.NewMemoryStore(), []byte("test-secret"))
@@ -23,14 +21,12 @@ func TestClientAgainstServer(t *testing.T) {
 	ctx := context.Background()
 	c := apiclient.New(ts.URL, "")
 
-	// Register and keep the token.
 	resp, err := c.Register(ctx, "hugo@example.com", "supersecret")
 	if err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	c.SetToken(resp.Token)
 
-	// Export config + state, which also creates a backup.
 	payload := shared.DataPayload{
 		Config: shared.Config{Model: "llama3.2:3b", Theme: "midnight"},
 		State:  shared.State{Messages: []shared.Message{{Role: shared.RoleUser, Content: "salut"}}},
@@ -43,7 +39,6 @@ func TestClientAgainstServer(t *testing.T) {
 		t.Fatal("expected a backup id")
 	}
 
-	// Import it back and check it round-trips.
 	got, err := c.Import(ctx)
 	if err != nil {
 		t.Fatalf("import: %v", err)
@@ -56,8 +51,6 @@ func TestClientAgainstServer(t *testing.T) {
 	}
 }
 
-// TestLoginWrongPasswordSurfacesServerError verifies the client turns a non-2xx
-// response into the server's error message.
 func TestLoginWrongPasswordSurfacesServerError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	srv := api.NewServer(api.NewMemoryStore(), []byte("test-secret"))

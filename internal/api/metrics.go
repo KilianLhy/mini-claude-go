@@ -10,7 +10,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Application metrics, exposed on GET /metrics for Prometheus to scrape.
 var (
 	httpRequests = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "miniclaude_http_requests_total",
@@ -34,7 +33,6 @@ var (
 	}, []string{"event"})
 )
 
-// metricsMiddleware records request count and latency for every request.
 func metricsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -49,7 +47,6 @@ func metricsMiddleware() gin.HandlerFunc {
 	}
 }
 
-// metricsHandler serves the Prometheus exposition endpoint.
 func metricsHandler() gin.HandlerFunc {
 	return gin.WrapH(promhttp.Handler())
 }

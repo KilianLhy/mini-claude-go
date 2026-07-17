@@ -44,8 +44,8 @@ type Model struct {
 	api           *apiclient.Client
 	authEmail     textinput.Model
 	authPass      textinput.Model
-	authFocus     int  // 0 = email, 1 = password
-	authRegister  bool // register vs login mode on the auth screen
+	authFocus     int
+	authRegister  bool
 	loggedInEmail string
 
 	streaming bool
@@ -60,7 +60,7 @@ type Model struct {
 	modelCursor int
 
 	themeCursor   int
-	themeOriginal string // theme to restore if the settings screen is cancelled
+	themeOriginal string
 
 	width  int
 	height int
@@ -91,15 +91,12 @@ func New(cfg config.Config, cli *client.Client, ctx context.Context) Model {
 	sp.Spinner = spinner.Dot
 	sp.Style = lipgloss.NewStyle().Foreground(theme.Primary)
 
-	// Restore any persisted conversation. A load error is non-fatal: we start
-	// with an empty history and tell the user.
 	var notice string
 	st, err := store.LoadState()
 	if err != nil {
 		notice = "could not load saved history (starting fresh)"
 	}
 
-	// Auth inputs for the sign-in screen.
 	emailInput := textinput.New()
 	emailInput.Placeholder = "you@example.com"
 	emailInput.CharLimit = 254
@@ -108,7 +105,6 @@ func New(cfg config.Config, cli *client.Client, ctx context.Context) Model {
 	passInput.EchoMode = textinput.EchoPassword
 	passInput.CharLimit = 128
 
-	// Restore a saved login session, if any, so the user stays logged in.
 	var loggedInEmail, token string
 	if creds, found, _ := store.LoadCredentials(); found {
 		loggedInEmail = creds.Email
@@ -130,15 +126,12 @@ func New(cfg config.Config, cli *client.Client, ctx context.Context) Model {
 	}
 }
 
-// persistState saves the current conversation to disk. Failures are surfaced
-// as a notice but never interrupt the chat (offline/local-first).
 func (m *Model) persistState() {
 	if err := store.SaveState(shared.State{Messages: m.history.Conversation()}); err != nil {
 		m.notice = "could not save history"
 	}
 }
 
-// persistConfig saves the current settings. Non-fatal on failure.
 func (m *Model) persistConfig() {
 	if err := config.Save(m.cfg); err != nil {
 		m.notice = "could not save settings"
@@ -148,8 +141,6 @@ func (m *Model) persistConfig() {
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(textarea.Blink, m.spinner.Tick)
 }
-
-// UI styles live in theme.go and are (re)built by applyTheme.
 
 const (
 	logoMini = `███╗   ███╗██╗███╗   ██╗██╗
@@ -279,7 +270,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case authDoneMsg:
 		if msg.err != nil {
-			// Stay on the auth screen so the user can retry.
+
 			m.notice = ""
 			m.lastErr = msg.err
 			m.refresh()
@@ -574,8 +565,6 @@ func (m Model) handleCommand(input string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// previewTheme applies a theme immediately so the settings screen shows a live
-// preview. It updates the spinner too, then re-renders.
 func (m *Model) previewTheme(name string) {
 	t := themeByName(name)
 	applyTheme(t)
@@ -604,7 +593,7 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.mode = modeChat
 		m.refresh()
 	case "esc":
-		m.previewTheme(m.themeOriginal) // revert the live preview
+		m.previewTheme(m.themeOriginal)
 		m.mode = modeChat
 		m.refresh()
 	case "ctrl+c":
