@@ -148,7 +148,7 @@ Ollama · Docker Compose · Prometheus / Grafana · GoReleaser · GitHub Actions
 
 ## Authors
 
-Hugo Stawiarski · Kilian Lahaye · Moustapha Sow
+Hugo Stawiarski · Kilian Lahaye · Moustapha yaya Sow
 
 ## License
 
