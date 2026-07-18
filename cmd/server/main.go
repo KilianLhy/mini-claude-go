@@ -24,16 +24,13 @@ func main() {
 	defer cancel()
 
 	port := getenv("PORT", "8080")
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		secret = "dev-insecure-secret-change-me"
-		log.Println("WARNING: JWT_SECRET not set, using an insecure development secret")
-	}
+	dsn := os.Getenv("DATABASE_URL")
+	secret := resolveSecret(dsn)
 
-	store := openStore(ctx)
+	store := openStore(ctx, dsn)
 	defer store.Close()
 
-	srv := api.NewServer(store, []byte(secret))
+	srv := api.NewServer(store, secret)
 	httpServer := &http.Server{
 		Addr:              ":" + port,
 		Handler:           srv.Router(),
@@ -53,8 +50,24 @@ func main() {
 	}
 }
 
-func openStore(ctx context.Context) api.Store {
-	dsn := os.Getenv("DATABASE_URL")
+const minSecretLen = 32
+
+func resolveSecret(dsn string) []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if dsn != "" {
+		if len(secret) < minSecretLen {
+			log.Fatalf("JWT_SECRET must be set to at least %d characters in production (DATABASE_URL is set)", minSecretLen)
+		}
+		return []byte(secret)
+	}
+	if secret == "" {
+		log.Println("WARNING: JWT_SECRET not set, using an insecure development secret (in-memory mode only)")
+		return []byte("dev-insecure-secret-change-me")
+	}
+	return []byte(secret)
+}
+
+func openStore(ctx context.Context, dsn string) api.Store {
 	if dsn == "" {
 		log.Println("DATABASE_URL not set, using in-memory store (data will not persist)")
 		return api.NewMemoryStore()

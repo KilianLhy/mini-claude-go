@@ -17,7 +17,11 @@ func NewServer(store Store, jwtSecret []byte) *Server {
 
 func (s *Server) Router() *gin.Engine {
 	r := gin.New()
-	r.Use(gin.Logger(), gin.Recovery(), metricsMiddleware())
+	r.Use(gin.Logger(), gin.Recovery(), metricsMiddleware(),
+		securityHeadersMiddleware(), bodyLimitMiddleware(),
+		rateLimitMiddleware(newRateLimiter(30, 60)))
+
+	authLimiter := rateLimitMiddleware(newRateLimiter(0.2, 5))
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -25,8 +29,8 @@ func (s *Server) Router() *gin.Engine {
 
 	r.GET("/metrics", metricsHandler())
 
-	r.POST(shared.RouteRegister, s.handleRegister)
-	r.POST(shared.RouteLogin, s.handleLogin)
+	r.POST(shared.RouteRegister, authLimiter, s.handleRegister)
+	r.POST(shared.RouteLogin, authLimiter, s.handleLogin)
 
 	auth := r.Group("/", s.authMiddleware())
 	auth.GET(shared.RouteData, s.handleGetData)
